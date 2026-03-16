@@ -1,0 +1,117 @@
+from flask import Blueprint, request, jsonify, session
+from models.db import get_connection
+
+milk_bp = Blueprint("milk", __name__, url_prefix="/api/milk")
+
+
+def require_login():
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+
+@milk_bp.route("", methods=["GET"])
+def list_milk():
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM milk_entries WHERE user_id=%s ORDER BY date DESC", (uid,))
+            rows = cur.fetchall()
+            for r in rows:
+                if r.get("date"):
+                    r["date"] = str(r["date"])
+                # Map snake_case → camelCase and cast numerics to float
+                r["milkType"]       = r.pop("milk_type", "Bulk Milk")
+                r["cattleTag"]      = r.pop("cattle_tag", "")
+                r["totalUsed"]      = float(r.pop("total_used", 0) or 0)
+                r["cowMilkedNumber"] = int(r.pop("cow_milked_number", 0) or 0)
+                r["am"]   = float(r.get("am", 0) or 0)
+                r["noon"] = float(r.get("noon", 0) or 0)
+                r["pm"]   = float(r.get("pm", 0) or 0)
+    finally:
+        conn.close()
+    return jsonify(rows), 200
+
+
+@milk_bp.route("", methods=["POST"])
+def add_milk():
+    err = require_login()
+    if err:
+        return err
+    uid  = session["user_id"]
+    data = request.get_json()
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO milk_entries
+                   (user_id, milk_type, date, cattle_tag, am, noon, pm, total_used, cow_milked_number, note)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (
+                    uid,
+                    data.get("milkType", data.get("milk_type", "Bulk Milk")),
+                    data.get("date"),
+                    data.get("cattleTag", data.get("cattle_tag", "")),
+                    data.get("am", 0),
+                    data.get("noon", 0),
+                    data.get("pm", 0),
+                    data.get("totalUsed", data.get("total_used", 0)),
+                    data.get("cowMilkedNumber", data.get("cow_milked_number", 0)),
+                    data.get("note", ""),
+                )
+            )
+            conn.commit()
+            eid = cur.lastrowid
+    finally:
+        conn.close()
+    return jsonify({"id": eid, "message": "Milk entry added"}), 201
+
+
+@milk_bp.route("/<int:entry_id>", methods=["PUT"])
+def update_milk(entry_id):
+    err = require_login()
+    if err:
+        return err
+    uid  = session["user_id"]
+    data = request.get_json()
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE milk_entries SET milk_type=%s, date=%s, cattle_tag=%s,
+                   am=%s, noon=%s, pm=%s, total_used=%s, cow_milked_number=%s, note=%s
+                   WHERE id=%s AND user_id=%s""",
+                (
+                    data.get("milkType", data.get("milk_type")), 
+                    data.get("date"), 
+                    data.get("cattleTag", data.get("cattle_tag")),
+                    data.get("am"), data.get("noon"), data.get("pm"),
+                    data.get("totalUsed", data.get("total_used")), 
+                    data.get("cowMilkedNumber", data.get("cow_milked_number")), 
+                    data.get("note"),
+                    entry_id, uid
+                )
+            )
+            conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"message": "Updated"}), 200
+
+
+@milk_bp.route("/<int:entry_id>", methods=["DELETE"])
+def delete_milk(entry_id):
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM milk_entries WHERE id=%s AND user_id=%s", (entry_id, uid))
+            conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"message": "Deleted"}), 200

@@ -6,7 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D18503B6697CD278AD3DAEBB /* Pods_PashuCare.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05E2DE2275640CC06F66DAE1 /* Pods_PashuCare.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		05E2DE2275640CC06F66DAE1 /* Pods_PashuCare.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PashuCare.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		80810545B1DA06CBF4190B26 /* Pods-PashuCare.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PashuCare.release.xcconfig"; path = "Target Support Files/Pods-PashuCare/Pods-PashuCare.release.xcconfig"; sourceTree = "<group>"; };
+		8F8BB74F9E7FACEDE02C87E4 /* Pods-PashuCare.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PashuCare.debug.xcconfig"; path = "Target Support Files/Pods-PashuCare/Pods-PashuCare.debug.xcconfig"; sourceTree = "<group>"; };
 		B7392D9F2F5178F000BB9F79 /* PashuCare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PashuCare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -23,17 +30,37 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D18503B6697CD278AD3DAEBB /* Pods_PashuCare.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		49A1F97EB87A4DC0724ED168 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				8F8BB74F9E7FACEDE02C87E4 /* Pods-PashuCare.debug.xcconfig */,
+				80810545B1DA06CBF4190B26 /* Pods-PashuCare.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		A4840254D7CA9307F5E9F43B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				05E2DE2275640CC06F66DAE1 /* Pods_PashuCare.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B7392D962F5178F000BB9F79 = {
 			isa = PBXGroup;
 			children = (
 				B7392DA12F5178F000BB9F79 /* PashuCare */,
 				B7392DA02F5178F000BB9F79 /* Products */,
+				49A1F97EB87A4DC0724ED168 /* Pods */,
+				A4840254D7CA9307F5E9F43B /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -52,6 +79,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B7392DAA2F5178F100BB9F79 /* Build configuration list for PBXNativeTarget "PashuCare" */;
 			buildPhases = (
+				53E275644DE0834E4AFCE32D /* [CP] Check Pods Manifest.lock */,
 				B7392D9B2F5178F000BB9F79 /* Sources */,
 				B7392D9C2F5178F000BB9F79 /* Frameworks */,
 				B7392D9D2F5178F000BB9F79 /* Resources */,
@@ -64,8 +92,6 @@
 				B7392DA12F5178F000BB9F79 /* PashuCare */,
 			);
 			name = PashuCare;
-			packageProductDependencies = (
-			);
 			productName = PashuCare;
 			productReference = B7392D9F2F5178F000BB9F79 /* PashuCare.app */;
 			productType = "com.apple.product-type.application";
@@ -113,6 +139,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		53E275644DE0834E4AFCE32D /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-PashuCare-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		B7392D9B2F5178F000BB9F79 /* Sources */ = {
@@ -248,6 +299,7 @@
 		};
 		B7392DAB2F5178F100BB9F79 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F8BB74F9E7FACEDE02C87E4 /* Pods-PashuCare.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -280,6 +332,7 @@
 		};
 		B7392DAC2F5178F100BB9F79 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 80810545B1DA06CBF4190B26 /* Pods-PashuCare.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
