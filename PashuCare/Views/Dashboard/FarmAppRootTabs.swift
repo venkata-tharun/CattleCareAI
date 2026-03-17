@@ -151,18 +151,22 @@ struct FarmAppRootTabs: View {
         case .feeding:
             FeedingHubView()
                 .environmentObject(router)
+                .environmentObject(feedManager)
                 .toolbar(.hidden, for: .tabBar)
         case .feedingEntry:
             FeedingEntryView()
                 .environmentObject(router)
+                .environmentObject(feedManager)
                 .toolbar(.hidden, for: .tabBar)
         case .feedStock:
             FeedStockView()
                 .environmentObject(router)
+                .environmentObject(feedManager)
                 .toolbar(.hidden, for: .tabBar)
         case .feedingSchedule:
             FeedingScheduleView()
                 .environmentObject(router)
+                .environmentObject(feedManager)
                 .toolbar(.hidden, for: .tabBar)
         case .sanitation:
             SanitationHubView()
@@ -203,10 +207,12 @@ struct FarmAppRootTabs: View {
         case .addStock:
             AddStockView()
                 .environmentObject(router)
+                .environmentObject(feedManager)
                 .toolbar(.hidden, for: .tabBar)
-        case .updateSchedule:
-            UpdateScheduleView()
+        case .updateSchedule(let schedule):
+            UpdateScheduleView(existingSchedule: schedule)
                 .environmentObject(router)
+                .environmentObject(feedManager)
                 .toolbar(.hidden, for: .tabBar)
         case .transactions:
             TransactionsView()

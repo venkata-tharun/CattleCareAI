@@ -115,7 +115,7 @@ struct PredictionResultView: View {
                                         .foregroundColor(.gray)
                                         .font(.system(size: 10))
                                     
-                                    Text(String(format: "%.1f%% Confidence", prediction.confidence * 100))
+                                    Text("\(prediction.confidence) Confidence")
                                 }
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(.secondary)
@@ -207,6 +207,12 @@ struct PredictionResultView: View {
                                         animalId: selectedAnimal?.id
                                     ) { success in
                                         if success {
+                                            // Handle automatic status update
+                                            if let animal = selectedAnimal {
+                                                let newStatus: AnimalStatus = (prediction.diseaseName == "Healthy" ? .healthy : .sick)
+                                                animalManager.updateAnimalStatus(id: animal.id, animal: animal, newStatus: newStatus) { _ in }
+                                            }
+                                            
                                             let df = DateFormatter()
                                             df.dateFormat = "MMM dd, yyyy"
                                             let newEvent = AIHealthEvent(

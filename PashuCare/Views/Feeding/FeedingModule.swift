@@ -74,7 +74,7 @@ enum FeedStockStatus: String, Codable, CaseIterable {
 }
 
 struct FeedingScheduleItem: Identifiable {
-    let id = UUID()
+    let id: Int
     let time: String
     let title: String
     let items: [String]
@@ -700,63 +700,190 @@ struct FlowLayout: View {
 // MARK: - Feeding Schedule View
 struct FeedingScheduleView: View {
     @Environment(\.dismiss) private var dismiss
-    
-    @State private var schedules = [
-        FeedingScheduleItem(time: "06:00 AM", title: "Morning Feed", items: ["Silage", "Concentrate"]),
-        FeedingScheduleItem(time: "02:00 PM", title: "Afternoon Snack", items: ["Green Fodder"]),
-        FeedingScheduleItem(time: "06:00 PM", title: "Evening Feed", items: ["Hay", "Mineral Mix"])
-    ]
+    @EnvironmentObject var feedManager: FeedDataManager
+    @EnvironmentObject var router: NavigationRouter
+    @State private var showDeleteAlert = false
+    @State private var itemToDelete: FeedingScheduleItem? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Color(.systemGroupedBackground).ignoresSafeArea()
             VStack(spacing: 0) {
+                // Header
                 HStack {
-                    Button { dismiss() } label: { Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold)).foregroundColor(.indigo).frame(width: 40, height: 40) }
-                    Spacer(); Text("Feeding Schedule").font(.system(size: 18, weight: .bold)); Spacer(); Color.clear.frame(width: 40, height: 40)
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.indigo)
+                            .frame(width: 40, height: 40)
+                    }
+                    Spacer()
+                    Text("Feeding Schedule").font(.system(size: 18, weight: .bold))
+                    Spacer()
+                    Color.clear.frame(width: 40, height: 40)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10).background(Color.white)
 
                 ScrollView {
                     VStack(spacing: 16) {
                         HStack {
-                            Image(systemName: "info.circle.fill").foregroundColor(.purple)
-                            Text("Completion checks log directly to your schedule history.").font(.system(size: 13, weight: .medium)).foregroundColor(.purple)
+                            Image(systemName: "info.circle.fill").foregroundColor(.indigo)
+                            Text("Tap ✓ to mark a feed done. Swipe left to delete, or tap edit to modify.").font(.system(size: 13, weight: .medium)).foregroundColor(.indigo)
                             Spacer()
                         }
-                        .padding(12).background(Color.purple.opacity(0.1)).cornerRadius(10)
-                        
-                        ForEach($schedules) { $schedule in
+                        .padding(12).background(Color.indigo.opacity(0.08)).cornerRadius(10)
+
+                        if feedManager.schedules.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.indigo.opacity(0.4))
+                                Text("No schedules yet")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                                Text("Tap \"Add Time Slot\" to create your first feeding schedule.")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(32)
+                        }
+
+                        ForEach(feedManager.schedules) { schedule in
                             HStack(alignment: .top, spacing: 16) {
-                                VStack {
-                                    Text(schedule.time.prefix(5)).font(.system(size: 16, weight: .bold))
-                                    Text(schedule.time.suffix(2)).font(.system(size: 11)).foregroundColor(.secondary)
+                                // Time column
+                                VStack(spacing: 2) {
+                                    let parts = formatTime(schedule.time)
+                                    Text(parts.0)
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text(parts.1)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
                                 }
                                 .frame(width: 60)
-                                
+
+                                // Content
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(schedule.title).font(.system(size: 16, weight: .bold))
-                                    Text(schedule.items.joined(separator: ", ")).font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text(schedule.title)
+                                        .font(.system(size: 16, weight: .bold))
+                                        .strikethrough(schedule.isCompleted, color: .secondary)
+                                    Text(schedule.items.joined(separator: ", "))
+                                        .font(.system(size: 13))
+                                        .foregroundColor(.secondary)
                                 }
                                 Spacer()
-                                Button {
-                                    schedule.isCompleted.toggle()
-                                } label: {
-                                    Image(systemName: schedule.isCompleted ? "checkmark.square.fill" : "square")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(schedule.isCompleted ? .indigo : .gray.opacity(0.5))
+
+                                // Action buttons
+                                VStack(spacing: 8) {
+                                    // Complete toggle
+                                    Button {
+                                        feedManager.updateSchedule(
+                                            id: schedule.id,
+                                            title: schedule.title,
+                                            time: schedule.time,
+                                            items: schedule.items,
+                                            isCompleted: !schedule.isCompleted
+                                        )
+                                    } label: {
+                                        Image(systemName: schedule.isCompleted ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(schedule.isCompleted ? .indigo : .gray.opacity(0.4))
+                                    }
+
+                                    // Edit button
+                                    Button {
+                                        router.push(.updateSchedule(schedule))
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.indigo)
+                                            .frame(width: 30, height: 30)
+                                            .background(Color.indigo.opacity(0.1))
+                                            .clipShape(Circle())
+                                    }
+
+                                    // Delete button
+                                    Button {
+                                        itemToDelete = schedule
+                                        showDeleteAlert = true
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.red)
+                                            .frame(width: 30, height: 30)
+                                            .background(Color.red.opacity(0.1))
+                                            .clipShape(Circle())
+                                    }
                                 }
                             }
-                            .padding(16).background(Color.white).cornerRadius(16).shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+                            .padding(16)
+                            .background(Color.white)
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+                            .opacity(schedule.isCompleted ? 0.6 : 1.0)
                         }
+
+                        Spacer().frame(height: 100)
                     }
                     .padding(16)
                 }
             }
+
+            // Add Time Slot Button
+            VStack {
+                Button {
+                    router.push(.updateSchedule(nil))
+                } label: {
+                    HStack {
+                        Image(systemName: "plus")
+                        Text("Add Time Slot")
+                    }
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Color.indigo)
+                    .cornerRadius(28)
+                    .shadow(color: Color.indigo.opacity(0.3), radius: 8, y: 4)
+                }
+            }
+            .padding(16)
         }
         .navigationBarHidden(true)
+        .onAppear { feedManager.loadData() }
+        .alert("Delete Schedule?", isPresented: $showDeleteAlert) {
+            Button("Delete", role: .destructive) {
+                if let item = itemToDelete {
+                    feedManager.deleteSchedule(id: item.id)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently remove this feeding time slot.")
+        }
+    }
+
+    private func formatTime(_ time: String) -> (String, String) {
+        // time is stored as "HH:mm" or "06:00 AM" etc.
+        // We parse if possible
+        let df24 = DateFormatter()
+        df24.dateFormat = "HH:mm"
+        let dfDisplay = DateFormatter()
+        dfDisplay.dateFormat = "hh:mm"
+        let dfAmPm = DateFormatter()
+        dfAmPm.dateFormat = "a"
+
+        if let d = df24.date(from: time) {
+            return (dfDisplay.string(from: d), dfAmPm.string(from: d))
+        }
+        // Fallback: show as-is
+        if time.count >= 5 {
+            return (String(time.prefix(5)), String(time.dropFirst(6)))
+        }
+        return (time, "")
     }
 }
+
 
 
 // MARK: - Reports List Preview (For Feeding Module View)
@@ -843,74 +970,156 @@ struct ReportsListView: View {
 struct UpdateScheduleView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var router: NavigationRouter
+    @EnvironmentObject var feedManager: FeedDataManager
+
+    /// If non-nil, we're editing an existing schedule
+    var existingSchedule: FeedingScheduleItem?
 
     @State private var time = Date()
     @State private var title: String = ""
     @State private var items: String = ""
+    @State private var isSaving = false
+
+    private var isEditing: Bool { existingSchedule != nil }
+
+    private static let timeFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "HH:mm"
+        return df
+    }()
 
     var body: some View {
         ZStack(alignment: .bottom) {
             Color(.systemGroupedBackground).ignoresSafeArea()
             VStack(spacing: 0) {
                 HStack {
-                    Button { dismiss() } label: { Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold)).foregroundColor(.indigo).frame(width: 40, height: 40) }
-                    Spacer(); Text("Add Time Slot").font(.system(size: 18, weight: .bold)); Spacer(); Color.clear.frame(width: 40, height: 40)
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.indigo)
+                            .frame(width: 40, height: 40)
+                    }
+                    Spacer()
+                    Text(isEditing ? "Edit Time Slot" : "Add Time Slot")
+                        .font(.system(size: 18, weight: .bold))
+                    Spacer()
+                    Color.clear.frame(width: 40, height: 40)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 10).background(Color.white)
 
                 ScrollView {
                     VStack(spacing: 16) {
                         HStack {
-                            Image(systemName: "info.circle.fill").foregroundColor(.purple)
-                            Text("Updates Schedule History.").font(.system(size: 13, weight: .medium)).foregroundColor(.purple)
+                            Image(systemName: isEditing ? "pencil.circle.fill" : "info.circle.fill")
+                                .foregroundColor(.indigo)
+                            Text(isEditing ? "Edit this feeding time slot." : "Create a new feeding time slot.")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.indigo)
                             Spacer()
                         }
-                        .padding(12).background(Color.purple.opacity(0.1)).cornerRadius(10)
-                        
+                        .padding(12).background(Color.indigo.opacity(0.08)).cornerRadius(10)
+
+                        // Time Picker
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Time").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
                             DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
-                                .datePickerStyle(.compact)
+                                .datePickerStyle(.wheel)
                                 .labelsHidden()
+                                .frame(maxWidth: .infinity)
                         }
-                        .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color.white).cornerRadius(16).shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
-                        
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+
+                        // Slot Name
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Slot Name").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
                             TextField("e.g. Evening Supplement", text: $title)
                                 .font(.system(size: 16))
                                 .padding(14).background(Color(.systemGray6)).cornerRadius(12)
                         }
-                        .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color.white).cornerRadius(16).shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
-                        
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+
+                        // Feed Items
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Feed Items (Comma Separated)").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                            Text("Feed Items (Comma Separated)")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.secondary)
                             TextField("e.g. Silage, Concentrate", text: $items)
                                 .font(.system(size: 16))
                                 .padding(14).background(Color(.systemGray6)).cornerRadius(12)
                         }
-                        .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(Color.white).cornerRadius(16).shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
-                        
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+
                         Spacer().frame(height: 100)
                     }
                     .padding(16)
                 }
             }
-            
+
             VStack {
                 Button {
-                    // Action mockup
-                    dismiss()
+                    guard !title.isEmpty, !items.isEmpty else { return }
+                    isSaving = true
+                    let timeStr = Self.timeFormatter.string(from: time)
+                    let itemList = items
+                        .split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+
+                    if let existing = existingSchedule {
+                        feedManager.updateSchedule(
+                            id: existing.id,
+                            title: title,
+                            time: timeStr,
+                            items: itemList,
+                            isCompleted: existing.isCompleted
+                        )
+                    } else {
+                        feedManager.addSchedule(title: title, time: timeStr, items: itemList)
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        isSaving = false
+                        dismiss()
+                    }
                 } label: {
-                    Text("Save to Schedule")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white).frame(maxWidth: .infinity).frame(height: 56)
-                        .background(!title.isEmpty && !items.isEmpty ? Color.indigo : Color.gray.opacity(0.5)).cornerRadius(28)
+                    HStack {
+                        if isSaving {
+                            ProgressView().tint(.white).padding(.trailing, 6)
+                        }
+                        Text(isSaving ? "Saving..." : (isEditing ? "Update Schedule" : "Save to Schedule"))
+                            .font(.system(size: 16, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(!title.isEmpty && !items.isEmpty ? Color.indigo : Color.gray.opacity(0.5))
+                    .cornerRadius(28)
+                    .shadow(color: Color.indigo.opacity(0.3), radius: 8, y: 4)
                 }
-                .disabled(title.isEmpty || items.isEmpty)
+                .disabled(title.isEmpty || items.isEmpty || isSaving)
             }
             .padding(16)
         }
         .navigationBarHidden(true)
+        .onAppear {
+            if let s = existingSchedule {
+                title = s.title
+                items = s.items.joined(separator: ", ")
+                // Parse stored "HH:mm" back to Date
+                if let d = Self.timeFormatter.date(from: s.time) { time = d }
+            }
+        }
     }
 }

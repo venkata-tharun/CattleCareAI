@@ -20,6 +20,7 @@ final class FeedDataManager: ObservableObject {
     @Published var stockItems: [FeedStockItem] = []
     @Published var stockActivity: [StockActivityEntry] = []
     @Published var feedingEntries: [FeedingEntry] = []
+    @Published var schedules: [FeedingScheduleItem] = []
     
     init() {
         loadData()
@@ -48,6 +49,36 @@ final class FeedDataManager: ObservableObject {
             "quantity": entry.quantity,
             "notes": entry.notes
         ]) { [weak self] success in
+            if success { self?.loadData() }
+        }
+    }
+
+    // ── Feeding Schedules ──────────────────────────────────────────
+    func deleteSchedule(id: Int) {
+        NetworkManager.shared.deleteFeedingSchedule(id: id) { [weak self] success in
+            if success { self?.loadData() }
+        }
+    }
+
+    func updateSchedule(id: Int, title: String, time: String, items: [String], isCompleted: Bool) {
+        let body: [String: Any] = [
+            "title": title,
+            "time": time,
+            "items": items,
+            "isCompleted": isCompleted
+        ]
+        NetworkManager.shared.updateFeedingSchedule(id: id, body: body) { [weak self] success in
+            if success { self?.loadData() }
+        }
+    }
+
+    func addSchedule(title: String, time: String, items: [String]) {
+        let body: [String: Any] = [
+            "title": title,
+            "time": time,
+            "items": items
+        ]
+        NetworkManager.shared.addFeedingSchedule(body) { [weak self] success in
             if success { self?.loadData() }
         }
     }
@@ -104,6 +135,26 @@ final class FeedDataManager: ObservableObject {
                     feedType: type,
                     quantity: qt,
                     notes: dict["notes"] as? String ?? ""
+                )
+            }
+        }
+
+        NetworkManager.shared.getFeedingSchedules { [weak self] raw in
+            guard let self = self else { return }
+            self.schedules = raw.compactMap { dict -> FeedingScheduleItem? in
+                guard
+                    let id = dict["id"] as? Int,
+                    let title = dict["title"] as? String,
+                    let time = dict["time"] as? String,
+                    let items = dict["items"] as? [String]
+                else { return nil }
+                
+                return FeedingScheduleItem(
+                    id: id,
+                    time: time,
+                    title: title,
+                    items: items,
+                    isCompleted: dict["isCompleted"] as? Bool ?? false
                 )
             }
         }

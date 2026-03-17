@@ -45,4 +45,24 @@ final class AnimalDataManager: ObservableObject {
             }
         }
     }
+
+    func updateAnimalStatus(id: Int, animal: Animal, newStatus: AnimalStatus, completion: @escaping (Bool) -> Void) {
+        let body: [String: Any] = [
+            "name": animal.name,
+            "tag": animal.tag,
+            "breed": animal.breed,
+            "age": animal.age,
+            "weight": animal.weight,
+            "gender": animal.gender,
+            "status": newStatus.rawValue
+        ]
+        
+        NetworkManager.shared.updateAnimal(id: id, body: body) { [weak self] success in
+            guard let self = self else { return }
+            if success {
+                self.fetchAnimals()
+            }
+            completion(success)
+        }
+    }
 }

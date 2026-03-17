@@ -4,6 +4,18 @@ from models.db import get_connection
 milk_bp = Blueprint("milk", __name__, url_prefix="/api/milk")
 
 
+def _user_has_animals(uid, cur):
+    """Return True if the user owns at least one animal."""
+    cur.execute("SELECT id FROM animals WHERE user_id = %s LIMIT 1", (uid,))
+    return cur.fetchone() is not None
+
+
+def _validate_cattle_tag(uid, tag, cur):
+    """Return True if the given tag belongs to one of the user's animals."""
+    cur.execute("SELECT id FROM animals WHERE user_id = %s AND tag = %s LIMIT 1", (uid, tag))
+    return cur.fetchone() is not None
+
+
 def require_login():
     if "user_id" not in session:
         return jsonify({"error": "Not logged in"}), 401
@@ -36,6 +48,26 @@ def list_milk():
     return jsonify(rows), 200
 
 
+@milk_bp.route("/animal-tags", methods=["GET"])
+def get_animal_tags():
+    """Return list of {id, name, tag} for the current user's animals."""
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, name, tag FROM animals WHERE user_id = %s ORDER BY name ASC",
+                (uid,)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    return jsonify(rows), 200
+
+
 @milk_bp.route("", methods=["POST"])
 def add_milk():
     err = require_login()
@@ -46,15 +78,27 @@ def add_milk():
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            # ── Guard: user must have at least one animal ──────────────
+            if not _user_has_animals(uid, cur):
+                return jsonify({"error": "Please add at least one animal before recording milk production."}), 403
+
+            milk_type  = data.get("milkType", data.get("milk_type", "Bulk Milk"))
+            cattle_tag = data.get("cattleTag", data.get("cattle_tag", ""))
+
+            # ── Guard: if a cattle tag is provided, it must belong to the user ──
+            if cattle_tag:
+                if not _validate_cattle_tag(uid, cattle_tag, cur):
+                    return jsonify({"error": f"Cattle tag '{cattle_tag}' does not belong to any of your animals."}), 400
+
             cur.execute(
                 """INSERT INTO milk_entries
                    (user_id, milk_type, date, cattle_tag, am, noon, pm, total_used, cow_milked_number, note)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     uid,
-                    data.get("milkType", data.get("milk_type", "Bulk Milk")),
+                    milk_type,
                     data.get("date"),
-                    data.get("cattleTag", data.get("cattle_tag", "")),
+                    cattle_tag,
                     data.get("am", 0),
                     data.get("noon", 0),
                     data.get("pm", 0),

@@ -52,13 +52,9 @@ struct GetStartedView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
-                withAnimation(.easeInOut(duration: 0.55)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                withAnimation(.easeInOut(duration: 0.8)) {
                     animateOut = true
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                    router.push(.welcome) 
                 }
             }
         }

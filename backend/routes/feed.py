@@ -161,3 +161,119 @@ def list_feed_entries():
     finally:
         conn.close()
     return jsonify(rows), 200
+
+
+# ─── Feeding Schedules ────────────────────────────────────────────────
+
+@feed_bp.route("/schedules", methods=["GET"])
+def list_schedules():
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM feeding_schedules WHERE user_id=%s ORDER BY time ASC", (uid,))
+            rows = cur.fetchall()
+            import json
+            for r in rows:
+                try:
+                    r["items"] = json.loads(r.pop("items_json", "[]"))
+                except:
+                    r["items"] = []
+                r["isCompleted"] = bool(r.pop("is_completed", False))
+    finally:
+        conn.close()
+    return jsonify(rows), 200
+
+
+@feed_bp.route("/schedules", methods=["POST"])
+def add_schedule():
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    data = request.get_json()
+    time  = data.get("time", "").strip()
+    title = data.get("title", "").strip()
+    items = data.get("items", []) # List of strings
+    
+    if not time or not title:
+        return jsonify({"error": "time and title required"}), 400
+
+    import json
+    items_json = json.dumps(items)
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO feeding_schedules (user_id, time, title, items_json) VALUES (%s, %s, %s, %s)",
+                (uid, time, title, items_json)
+            )
+            conn.commit()
+            sid = cur.lastrowid
+    finally:
+        conn.close()
+    return jsonify({"id": sid, "message": "Schedule added"}), 201
+
+
+@feed_bp.route("/schedules/<int:sid>", methods=["PUT"])
+def update_schedule(sid):
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    data = request.get_json()
+    
+    updates = []
+    params = []
+    
+    if "time" in data:
+        updates.append("time=%s")
+        params.append(data["time"])
+    if "title" in data:
+        updates.append("title=%s")
+        params.append(data["title"])
+    if "items" in data:
+        import json
+        updates.append("items_json=%s")
+        params.append(json.dumps(data["items"]))
+    if "isCompleted" in data:
+        updates.append("is_completed=%s")
+        params.append(data["isCompleted"])
+    
+    if not updates:
+        return jsonify({"message": "No changes"}), 200
+        
+    params.append(sid)
+    params.append(uid)
+    
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE feeding_schedules SET {', '.join(updates)} WHERE id=%s AND user_id=%s",
+                tuple(params)
+            )
+            conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"message": "Schedule updated"}), 200
+
+
+@feed_bp.route("/schedules/<int:sid>", methods=["DELETE"])
+def delete_schedule(sid):
+    err = require_login()
+    if err:
+        return err
+    uid = session["user_id"]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM feeding_schedules WHERE id=%s AND user_id=%s", (sid, uid))
+            conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"message": "Schedule deleted"}), 200

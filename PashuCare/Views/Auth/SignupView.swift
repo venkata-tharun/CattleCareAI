@@ -26,13 +26,11 @@ struct SignupView: View {
 
             // MARK: - Top Bar
             HStack {
-                Button {
-                    router.pop()
-                } label: {
+                Button { router.pop() } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.green)
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(Color(red: 0.06, green: 0.65, blue: 0.29))
+                        .frame(width: 44, height: 44, alignment: .leading)
                 }
 
                 Spacer()
@@ -179,6 +177,23 @@ struct SignupView: View {
                             .background(Color.green)
                             .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                     }
+                    .padding(.top, 10)
+                    
+                    // Already have an account? Login
+                    HStack(spacing: 8) {
+                        Text("Already have an account?")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(.systemGray))
+
+                        Button {
+                            router.pop()
+                        } label: {
+                            Text("Login")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.green)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                     .padding(.top, 10)
 
                     Spacer().frame(height: 30)

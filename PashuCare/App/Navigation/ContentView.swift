@@ -8,7 +8,9 @@ import SwiftUI
 
 extension Notification.Name {
     static let logoutNotification = Notification.Name("logoutNotification")
+    static let loginNotification  = Notification.Name("loginNotification")
 }
+
 
 enum AppRoute: Hashable {
     // Auth
@@ -79,7 +81,7 @@ enum AppRoute: Hashable {
     case aiImagePreview(UIImage)
     case aiPredictionResult(UIImage, DiseasePrediction)
     case addStock
-    case updateSchedule
+    case updateSchedule(FeedingScheduleItem?)
     
     // Calving Tracker
     case calvingTrackerHome
@@ -156,7 +158,9 @@ enum AppRoute: Hashable {
             hasher.combine(ObjectIdentifier(img))
             hasher.combine(pred)
         case .addStock: hasher.combine(40)
-        case .updateSchedule: hasher.combine(41)
+        case .updateSchedule(let item):
+            hasher.combine(41)
+            hasher.combine(item?.id)
         case .transactions: hasher.combine(42)
         case .newTransaction(let cat): hasher.combine(41); hasher.combine(cat)
         
@@ -206,7 +210,7 @@ enum AppRoute: Hashable {
         case (.aiImagePreview(let a), .aiImagePreview(let b)): return a === b
         case (.aiPredictionResult(let i1, let p1), .aiPredictionResult(let i2, let p2)): return i1 === i2 && p1 == p2
         case (.addStock, .addStock): return true
-        case (.updateSchedule, .updateSchedule): return true
+        case (.updateSchedule(let a), .updateSchedule(let b)): return a?.id == b?.id
         case (.transactions, .transactions): return true
         case (.newTransaction(let a), .newTransaction(let b)): return a == b
             
@@ -226,15 +230,28 @@ struct ContentView: View {
     @StateObject private var tabRouter = TabRouter()
     @State private var isLoggedIn = false
 
+    @State private var showSplash = true
+    
     var body: some View {
-        Group {
-            if isLoggedIn {
+        ZStack {
+            if showSplash {
+                GetStartedView()
+                    .environmentObject(router)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            withAnimation {
+                                showSplash = false
+                            }
+                        }
+                    }
+            } else if isLoggedIn {
                 FarmAppRootTabs()
                     .environmentObject(tabRouter)
                     .transition(.opacity)
             } else {
                 NavigationStack(path: $router.path) {
-                    GetStartedView()
+                    WelcomeView()
+                        .environmentObject(router)
                         .navigationDestination(for: AppRoute.self) { route in
                             switch route {
                             case .welcome:
@@ -273,12 +290,10 @@ struct ContentView: View {
                                 MilkingMachineDetailView()
                                     .environmentObject(router)
                             default:
-                                LoginView(isLoggedIn: $isLoggedIn)
-                                    .environmentObject(router)
+                                EmptyView()
                             }
                         }
                 }
-                // router is already in the environment from PashuCareApp
             }
         }
         .animation(.default, value: isLoggedIn)
@@ -289,6 +304,11 @@ struct ContentView: View {
             isLoggedIn = false
             router.popToRoot()
             tabRouter.selectedTab = .home
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .loginNotification)) { _ in
+            withAnimation {
+                isLoggedIn = true
+            }
         }
     }
 

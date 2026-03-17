@@ -21,13 +21,11 @@ struct ForgotPasswordView: View {
 
             // MARK: - Top Bar
             HStack {
-                Button {
-                    router.pop()
-                } label: {
+                Button { router.pop() } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.green)
-                        .frame(width: 44, height: 44)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(Color(red: 0.06, green: 0.65, blue: 0.29))
+                        .frame(width: 44, height: 44, alignment: .leading)
                 }
 
                 Spacer()

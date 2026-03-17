@@ -67,7 +67,8 @@ struct OTPVerificationView: View {
                                         showError = true
                                     } else {
                                         // Registration verified, go to login
-                                        router.popToWelcomeAndLogin()
+                                        router.popToRoot()
+                                        router.push(.login)
                                     }
                                 case .failure(let err):
                                     errorMessage = err.localizedDescription
@@ -138,7 +139,7 @@ struct OTPVerificationView: View {
                 .foregroundColor(.black)
             
             HStack {
-                Button { dismiss() } label: {
+                Button { router.pop() } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(Color(red: 0.06, green: 0.65, blue: 0.29))

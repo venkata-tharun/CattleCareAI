@@ -3,7 +3,6 @@ import SwiftUI
 enum AnimalStatus: String, CaseIterable, Identifiable, Codable {
     case healthy = "Healthy"
     case sick = "Sick"
-    case underTreatment = "Under Treatment"
 
     var id: String { rawValue }
 
@@ -11,7 +10,6 @@ enum AnimalStatus: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .healthy: return Color.green.opacity(0.18)
         case .sick: return Color.red.opacity(0.18)
-        case .underTreatment: return Color.yellow.opacity(0.22)
         }
     }
 
@@ -19,7 +17,6 @@ enum AnimalStatus: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .healthy: return Color.green
         case .sick: return Color.red
-        case .underTreatment: return Color.orange
         }
     }
 }

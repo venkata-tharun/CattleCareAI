@@ -5,6 +5,7 @@ struct CustomDatePickerField: View {
     let label: String
     @Binding var date: Date
     var isDateTime: Bool = false
+    var isTime: Bool = false
     
     @State private var showCalendar = false
     
@@ -27,25 +28,25 @@ struct CustomDatePickerField: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(Color.green.opacity(0.1))
+                        .fill((isTime || isDateTime ? Color.blue : Color.green).opacity(0.1))
                         .frame(width: 40, height: 40)
                     Image(systemName: icon)
                         .font(.system(size: 18))
-                        .foregroundColor(.green)
+                        .foregroundColor(isTime || isDateTime ? .blue : .green)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(label)
                         .font(.system(size: 12))
                         .foregroundColor(.gray)
-                    Text(isDateTime ? dtf.string(from: date) : df.string(from: date))
+                    Text(isTime || isDateTime ? dtf.string(from: date) : df.string(from: date))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 }
                 
                 Spacer()
                 
-                Image(systemName: "calendar")
+                Image(systemName: isTime ? "clock" : "calendar")
                     .foregroundColor(.secondary)
             }
             .padding(.horizontal, 16)
@@ -58,13 +59,24 @@ struct CustomDatePickerField: View {
         .sheet(isPresented: $showCalendar) {
             NavigationStack {
                 VStack(spacing: 0) {
-                    DatePicker(
-                        "",
-                        selection: $date,
-                        displayedComponents: isDateTime ? [.date, .hourAndMinute] : [.date]
-                    )
-                    .datePickerStyle(.graphical)
-                    .padding()
+                    if isTime {
+                        DatePicker(
+                            "",
+                            selection: $date,
+                            displayedComponents: [.hourAndMinute]
+                        )
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
+                        .padding()
+                    } else {
+                        DatePicker(
+                            "",
+                            selection: $date,
+                            displayedComponents: isDateTime ? [.date, .hourAndMinute] : [.date]
+                        )
+                        .datePickerStyle(.graphical)
+                        .padding()
+                    }
                     
                     Spacer()
                 }
@@ -77,7 +89,7 @@ struct CustomDatePickerField: View {
                         }
                     }
                 }
-                .presentationDetents([.medium, .large])
+                .presentationDetents(isTime ? [.height(300)] : [.medium, .large])
             }
         }
     }

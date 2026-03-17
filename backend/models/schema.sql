@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS animals (
     name     VARCHAR(255) NOT NULL,
     tag      VARCHAR(100) NOT NULL,
     breed    VARCHAR(100) NOT NULL DEFAULT '',
-    status   ENUM('Healthy','Sick','Under Treatment') NOT NULL DEFAULT 'Healthy',
+    status   ENUM('Healthy','Sick') NOT NULL DEFAULT 'Healthy',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

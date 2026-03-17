@@ -1,5 +1,6 @@
 import SwiftUI
 import TensorFlowLite
+import Vision
 
 class AIPredictionService {
     static let shared = AIPredictionService()
@@ -33,6 +34,18 @@ class AIPredictionService {
     }
     
     func predict(image: UIImage) async -> DiseasePrediction? {
+        // Pre-screen the image using Vision framework
+        let isCow = await isCowImage(image)
+        if !isCow {
+            return DiseasePrediction(
+                diseaseName: "Non-Cattle Detected",
+                confidence: "0%",
+                status: "Warning",
+                symptoms: ["The uploaded image does not appear to be a cow or is too unclear for AI analysis."],
+                precautions: ["Please upload a clear, focused image of the cattle's affected area.", "Ensure proper lighting and avoid background clutter."]
+            )
+        }
+
         guard let interpreter = interpreter else { return nil }
         
         // 1. Preprocess image: Resize & Pixel Data
@@ -57,18 +70,6 @@ class AIPredictionService {
             
             let confidenceValue = probabilities[maxIndex]
             let confidence = String(format: "%.0f%%", (confidenceValue * 100))
-            
-            // 6. Cow-only Restriction (Confidence Threshold)
-            // If the model is not confident about any of its cattle classes, it's likely not a cow.
-            if confidenceValue < 0.4 {
-                return DiseasePrediction(
-                    diseaseName: "Non-Cattle Detected",
-                    confidence: confidence,
-                    status: "Warning",
-                    symptoms: ["The uploaded image does not appear to be a cow or is too unclear for AI analysis."],
-                    precautions: ["Please upload a clear, focused image of the cattle's affected area.", "Ensure proper lighting and avoid background clutter."]
-                )
-            }
             
             // Map index to disease
             return mapResult(index: maxIndex, confidence: confidence)
@@ -114,6 +115,44 @@ class AIPredictionService {
                 symptoms: ["Could not determine symptoms"],
                 precautions: ["Contact your veterinarian for manual diagnosis"]
             )
+        }
+    }
+    
+    // MARK: - Validation
+    private func isCowImage(_ image: UIImage) async -> Bool {
+        guard let cgImage = image.cgImage else { return false }
+        
+        return await withCheckedContinuation { continuation in
+            let request = VNClassifyImageRequest { request, error in
+                guard let results = request.results as? [VNClassificationObservation], error == nil else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                
+                // Common ImageNet classes for cattle/bovines
+                let cattleKeywords = ["ox", "bull", "bison", "water buffalo", "ram", "bovine", "cow", "cattle", "calf", "zebu", "yak"]
+                
+                // Check if any of the top results (with at least 1% confidence) match our keywords
+                let isCattle = results.contains { observation in
+                    guard observation.confidence > 0.01 else { return false }
+                    let identifier = observation.identifier.lowercased()
+                    return cattleKeywords.contains { keyword in identifier.contains(keyword) }
+                }
+                
+                continuation.resume(returning: isCattle)
+            }
+            
+            #if targetEnvironment(simulator)
+                request.usesCPUOnly = true // Prevents Neural Engine errors on some simulators
+            #endif
+            
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do {
+                try handler.perform([request])
+            } catch {
+                print("Vision classification failed: \(error)")
+                continuation.resume(returning: false)
+            }
         }
     }
 }

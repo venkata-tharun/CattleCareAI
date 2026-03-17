@@ -39,8 +39,11 @@ class NetworkManager {
             
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 401 {
                 print("⚠️ NetworkManager: Session expired or unauthorized (401)")
-                NotificationCenter.default.post(name: .logoutNotification, object: nil)
-                return
+                // Don't trigger logout if we are on the login screen - we want to show "Invalid credentials"
+                if let path = req.url?.path, path != "/api/auth/login" {
+                    NotificationCenter.default.post(name: .logoutNotification, object: nil)
+                }
+                // Continue to process the response so the error message is decoded
             }
             
             guard let data = data else { return }
@@ -123,7 +126,7 @@ class NetworkManager {
         )
     }
 
-    func resetPassword(emailOrPhone: String, newPassword: String, resetToken: String, completion: @escaping (Result<SimpleMessageResponse, Error>) -> Void) {
+    func resetPassword(emailOrPhone: String, newPassword: String, resetToken: String, completion: @escaping (Result<AuthResponse, Error>) -> Void) {
         request(
             path: "/api/auth/reset-password",
             method: "POST",
@@ -198,6 +201,12 @@ class NetworkManager {
         }
     }
 
+    func updateAnimal(id: Int, body: [String: Any], completion: @escaping (Bool) -> Void) {
+        request(path: "/api/animals/\(id)", method: "PUT", body: body) { (r: Result<SimpleMessageResponse, Error>) in
+            completion((try? r.get()) != nil)
+        }
+    }
+
     // ── Animal Records ──────────────────────────────────────────────
     func getHealthRecords(animalId: Int, completion: @escaping ([[String: Any]]) -> Void) {
         fetchList(path: "/api/animals/\(animalId)/health-records", completion: completion)
@@ -234,6 +243,11 @@ class NetworkManager {
     // ── Milk ────────────────────────────────────────────────────────
     func getMilkEntries(completion: @escaping ([[String: Any]]) -> Void) {
         fetchList(path: "/api/milk", completion: completion)
+    }
+
+    /// Returns [{id, name, tag}] for animals owned by the current user.
+    func getAnimalTags(completion: @escaping ([[String: Any]]) -> Void) {
+        fetchList(path: "/api/milk/animal-tags", completion: completion)
     }
 
     func addMilkEntry(_ body: [String: Any], completion: @escaping (Bool) -> Void) {
@@ -322,6 +336,23 @@ class NetworkManager {
 
     func addFeedEntry(_ body: [String: Any], completion: @escaping (Bool) -> Void) {
         postItem(path: "/api/feed/entries", body: body, completion: completion)
+    }
+
+    // ── Feeding Schedules ──────────────────────────────────────────
+    func getFeedingSchedules(completion: @escaping ([[String: Any]]) -> Void) {
+        fetchList(path: "/api/feed/schedules", completion: completion)
+    }
+
+    func addFeedingSchedule(_ body: [String: Any], completion: @escaping (Bool) -> Void) {
+        postItem(path: "/api/feed/schedules", body: body, completion: completion)
+    }
+
+    func updateFeedingSchedule(id: Int, body: [String: Any], completion: @escaping (Bool) -> Void) {
+        putItem(path: "/api/feed/schedules/\(id)", body: body, completion: completion)
+    }
+
+    func deleteFeedingSchedule(id: Int, completion: @escaping (Bool) -> Void) {
+        deleteItem(path: "/api/feed/schedules/\(id)", completion: completion)
     }
 
     // ── Logs ────────────────────────────────────────────────────────

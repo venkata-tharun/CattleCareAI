@@ -45,10 +45,11 @@ app.config["PERMANENT_SESSION_LIFETIME"] = config.PERMANENT_SESSION_LIFETIME
 Session(app)   # Initialise Flask-Session (filesystem-backed, persists across restarts)
 
 # ── Mail Setup ─────────────────────────────────────────────────────
+smtp_port = int(os.getenv("SMTP_PORT", 587))
 app.config['MAIL_SERVER'] = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-app.config['MAIL_PORT'] = int(os.getenv("SMTP_PORT", 587))
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_PORT'] = smtp_port
+app.config['MAIL_USE_TLS'] = (smtp_port == 587)
+app.config['MAIL_USE_SSL'] = (smtp_port == 465)
 app.config['MAIL_USERNAME'] = os.getenv("SMTP_USER", "")
 app.config['MAIL_PASSWORD'] = os.getenv("SMTP_PASSWORD", "")
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv("SMTP_USER", "")

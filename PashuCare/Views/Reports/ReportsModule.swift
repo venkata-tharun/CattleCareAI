@@ -635,7 +635,7 @@ private struct HealthReportContent: View {
         return sickNames.count
     }
     
-    private var treatmentCount: Int { animalManager.animals.filter { $0.status == .underTreatment }.count }
+    
 
     var body: some View {
         VStack(spacing: 16) {
@@ -643,7 +643,6 @@ private struct HealthReportContent: View {
             HStack(spacing: 12) {
                 healthStatusCard(count: healthyCount, label: "Healthy", color: .green)
                 healthStatusCard(count: sickCount, label: "Sick", color: .red)
-                healthStatusCard(count: treatmentCount, label: "Treatment", color: .orange)
             }
 
             // Recent Events
@@ -657,23 +656,14 @@ private struct HealthReportContent: View {
 
                 VStack(spacing: 0) {
                     // Show Saved AI Events (Filtering out dummy "Unknown Animal" entries)
-                    ForEach(healthManager.healthEvents.filter { $0.animalName != "Unknown Animal" }) { event in
+                    ForEach(healthManager.healthEvents.filter { $0.animalName != "Unknown Animal" }, id: \.id) { event in
                         HStack {
-                            if let imgData = event.imageData, let uiImage = UIImage(data: imgData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.gray.opacity(0.15))
                                     .frame(width: 44, height: 44)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            } else {
-                                // Fallback placeholder if no image exists
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color.gray.opacity(0.15))
-                                        .frame(width: 44, height: 44)
-                                    Image(systemName: "photo")
-                                        .foregroundColor(.gray)
-                                }
+                                Image(systemName: "cross.case.fill")
+                                    .foregroundColor(.red.opacity(0.6))
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {

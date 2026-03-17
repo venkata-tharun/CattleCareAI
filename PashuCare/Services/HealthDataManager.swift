@@ -73,10 +73,8 @@ final class HealthDataManager: ObservableObject {
                     confidence: confidence
                 )
             }
-            if !fetched.isEmpty {
-                self.healthEvents = fetched
-                self.saveData()
-            }
+            self.healthEvents = fetched
+            self.saveData()
         }
     }
     

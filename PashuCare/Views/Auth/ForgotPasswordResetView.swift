@@ -84,12 +84,20 @@ struct ForgotPasswordResetView: View {
                             isLoading = false
                             switch result {
                             case .success(let res):
-                                if res.error != nil {
-                                    errorMessage = res.error!
-                                    showError = true
-                                } else {
-                                    router.popToRoot() // Go back to login
-                                }
+                                    if let user = res.user {
+                                        // Auto-login after reset
+                                        UserDefaults.standard.set(user.full_name, forKey: "userName")
+                                        UserDefaults.standard.set(user.farm_name, forKey: "farmName")
+                                        UserDefaults.standard.set(user.email_or_phone, forKey: "userEmail")
+                                        UserDefaults.standard.set(user.id, forKey: "userId")
+                                        NotificationCenter.default.post(name: .loginNotification, object: nil)
+                                    } else if let errMsg = res.error {
+                                        errorMessage = errMsg
+                                        showError = true
+                                    } else {
+                                        // Fallback if no user but success
+                                        NotificationCenter.default.post(name: .loginNotification, object: nil)
+                                    }
                             case .failure(let err):
                                 errorMessage = err.localizedDescription
                                 showError = true

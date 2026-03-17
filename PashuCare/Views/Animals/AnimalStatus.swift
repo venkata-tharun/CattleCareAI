@@ -208,6 +208,8 @@ struct AnimalDetailView: View {
     @State private var isLoadingRecords = false
     @State private var filterDate: Date? = nil
     @State private var showDatePicker = false
+    @State private var currentStatus: AnimalStatus = .healthy
+    @EnvironmentObject var animalManager: AnimalDataManager
 
     private var combinedRecords: [HealthRecord] {
         let hr: [HealthRecord] = healthRecords
@@ -297,9 +299,36 @@ struct AnimalDetailView: View {
                             .font(.system(size: 28, weight: .bold))
 
                         HStack {
-                            StatusPill(text: animal.status.rawValue,
-                                       bg: animal.status.pillBackground,
-                                       fg: animal.status.pillText)
+                            Menu {
+                                ForEach(AnimalStatus.allCases) { s in
+                                    Button {
+                                        let oldStatus = currentStatus
+                                        currentStatus = s
+                                        animalManager.updateAnimalStatus(id: animal.id, animal: animal, newStatus: s) { success in
+                                            if !success {
+                                                currentStatus = oldStatus // Revert on failure
+                                            }
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(s.rawValue)
+                                            if currentStatus == s {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    StatusPill(text: currentStatus.rawValue,
+                                               bg: currentStatus.pillBackground,
+                                               fg: currentStatus.pillText)
+                                    Image(systemName: "pencil.circle.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.gray.opacity(0.6))
+                                }
+                            }
+                            .buttonStyle(.plain)
 
                             Text("•")
                                 .foregroundColor(.gray)
@@ -402,6 +431,7 @@ struct AnimalDetailView: View {
         .navigationBarHidden(true)
         .onAppear {
             print("🛠 AnimalDetailView: Showing \(animal.name) - Age: \(animal.age), Weight: \(animal.weight)")
+            currentStatus = animal.status
             loadRecords()
         }
         .toolbar(.hidden, for: .tabBar)

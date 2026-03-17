@@ -53,13 +53,15 @@ struct VisitorsView: View {
                 VStack(spacing: 24) {
                     // Metrics Grid
                     VStack(spacing: 12) {
+                        MetricCard(title: "Total Today", value: "\(dataManager.todayVisitorsCount)")
+                        
                         HStack(spacing: 12) {
-                            MetricCard(title: "Total Today", value: "\(dataManager.todayVisitorsCount)")
                             MetricCard(title: "Pending", value: "\(dataManager.pendingCount)")
+                            MetricCard(title: "Approved", value: "\(dataManager.approvedCount)")
                         }
                         
                         HStack(spacing: 12) {
-                            MetricCard(title: "Approved", value: "\(dataManager.approvedCount)")
+                            MetricCard(title: "Checked In", value: "\(dataManager.checkedInCount)")
                             MetricCard(title: "Checked Out", value: "\(dataManager.checkedOutCount)")
                         }
                     }
@@ -244,14 +246,14 @@ struct AddVisitorView: View {
                             icon: "clock",
                             label: "Entry Time",
                             date: $entryTime,
-                            isDateTime: true
+                            isTime: true
                         )
                         
                         CustomDatePickerField(
                             icon: "clock.fill",
                             label: "Outgoing Time",
                             date: $outgoingTime,
-                            isDateTime: true
+                            isTime: true
                         )
                         
                         SimpleTextField(title: "Person to Meet", placeholder: "Staff Name", text: $personToMeet)
