@@ -3,10 +3,11 @@ import Combine
 
 @MainActor
 class SanitationDataManager: ObservableObject {
-    @Published var score: Int = 0
+    @Published var score: Int? = nil
     @Published var isSaving: Bool = false
     
     var conditionText: String {
+        guard let score = score else { return "No Entry Yet" }
         if score >= 80 { return "Excellent Condition" }
         if score >= 60 { return "Good Condition" }
         if score >= 40 { return "Fair Condition" }
@@ -14,11 +15,13 @@ class SanitationDataManager: ObservableObject {
     }
     
     var conditionColor: Color {
+        guard let score = score else { return .secondary }
         if score >= 80 { return .green }
         if score >= 60 { return .blue }
         if score >= 40 { return .orange }
         return .red
     }
+
     
     init() { fetchScore() }
     

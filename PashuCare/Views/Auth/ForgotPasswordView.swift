@@ -85,6 +85,18 @@ struct ForgotPasswordView: View {
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .keyboardType(.emailAddress)
+                            .onChange(of: phoneOrEmail) { oldValue, newValue in
+                                if newValue.allSatisfy(\.isNumber) {
+                                    if newValue.count > 10 {
+                                        phoneOrEmail = String(newValue.prefix(10))
+                                    }
+                                    if newValue.count == 10 && newValue.allSatisfy({ $0 == newValue.first }) {
+                                        phoneOrEmail = ""
+                                        errorMessage = "Invalid phone number. All digits cannot be the same."
+                                        showError = true
+                                    }
+                                }
+                            }
 
                         Spacer(minLength: 0)
                     }
@@ -101,6 +113,26 @@ struct ForgotPasswordView: View {
 
                     // MARK: - Send OTP Button
                     Button {
+                        // Phone validation: if input is all digits, validate as phone number
+                        let contact = phoneOrEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if contact.allSatisfy(\.isNumber) {
+                            guard contact.count == 10 else {
+                                errorMessage = "Phone number must be exactly 10 digits."
+                                showError = true
+                                return
+                            }
+                            if contact.allSatisfy({ $0 == contact.first }) {
+                                errorMessage = "Invalid phone number (too repetitive)."
+                                showError = true
+                                return
+                            }
+                            if !["6","7","8","9"].contains(String(contact.first!)) {
+                                errorMessage = "Phone number must start with 6, 7, 8, or 9."
+                                showError = true
+                                return
+                            }
+                        }
+                        
                         withAnimation { isLoading = true }
                         
                         NetworkManager.shared.forgotPassword(emailOrPhone: phoneOrEmail) { result in

@@ -17,7 +17,6 @@ struct ReportsView: View {
     @EnvironmentObject var healthManager: HealthDataManager
     @EnvironmentObject var visitorManager: VisitorDataManager
     @EnvironmentObject var sanitationManager: SanitationDataManager
-    @EnvironmentObject var logsManager: LogsDataManager
     @EnvironmentObject var animalManager: AnimalDataManager
 
     var body: some View {
@@ -51,7 +50,6 @@ struct ReportsView: View {
             milkManager.loadData()
             feedManager.loadData()
             visitorManager.loadData()
-            logsManager.loadData()
             animalManager.fetchAnimals()
         }
     }
@@ -64,7 +62,7 @@ struct ReportsView: View {
         case .health:
             let healthy = animalManager.animals.filter { $0.status == .healthy }.count
             let total = animalManager.animals.count
-            return total > 0 ? "\(healthy)/\(total) Healthy" : "\(sanitationManager.score)% Score"
+            return total > 0 ? "\(healthy)/\(total) Healthy" : "0 Animals"
         case .feeding:
             let total = feedManager.stockItems.reduce(0) { $0 + $1.quantityValue }
             return "\(Int(total)) kg"
@@ -222,7 +220,6 @@ struct ReportDetailView: View {
     @EnvironmentObject var healthManager: HealthDataManager
     @EnvironmentObject var visitorManager: VisitorDataManager
     @EnvironmentObject var sanitationManager: SanitationDataManager
-    @EnvironmentObject var logsManager: LogsDataManager
     @EnvironmentObject var animalManager: AnimalDataManager
 
     @State private var generatedPDF: URL?
@@ -361,7 +358,6 @@ struct ReportDetailView: View {
         .environmentObject(healthManager)
         .environmentObject(visitorManager)
         .environmentObject(sanitationManager)
-        .environmentObject(logsManager)
         .environmentObject(animalManager)
 
         PDFExporter.render(view: viewToRender, to: url)
@@ -619,7 +615,6 @@ private struct MilkReportContent: View {
 
 private struct HealthReportContent: View {
     @EnvironmentObject var healthManager: HealthDataManager
-    @EnvironmentObject var logsManager: LogsDataManager
     @EnvironmentObject var animalManager: AnimalDataManager
 
     private var healthyCount: Int {
@@ -655,8 +650,8 @@ private struct HealthReportContent: View {
                 }
 
                 VStack(spacing: 0) {
-                    // Show Saved AI Events (Filtering out dummy "Unknown Animal" entries)
-                    ForEach(healthManager.healthEvents.filter { $0.animalName != "Unknown Animal" }, id: \.id) { event in
+                    // Show Saved AI Events
+                    ForEach(healthManager.healthEvents, id: \.id) { event in
                         HStack {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 8)
@@ -667,7 +662,7 @@ private struct HealthReportContent: View {
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(event.animalName).font(.system(size: 15, weight: .semibold))
+                                Text(event.animalName == "Unknown Animal" ? "AI Analysis" : event.animalName).font(.system(size: 15, weight: .semibold))
                                 Text(event.diseaseName).font(.system(size: 13)).foregroundColor(.secondary)
                             }
                             .padding(.leading, 8)
@@ -693,31 +688,6 @@ private struct HealthReportContent: View {
                         Divider()
                     }
                     
-                    // Show Health Logs from LogsDataManager
-                    ForEach(logsManager.logs.filter { $0.type == .health }) { log in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(log.animalId ?? "Farm Log").font(.system(size: 15, weight: .semibold))
-                                Text(log.description).font(.system(size: 13)).foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text(log.date)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                                Text("Health Log")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.green)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.green.opacity(0.12))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        Divider()
-                    }
                 }
             }
             .padding(16)
@@ -763,17 +733,21 @@ private struct FeedingReportContent: View {
     private var stockTotal: Double { manager.stockItems.reduce(0) { $0 + $1.quantityValue } }
     
     private var todayFeedingTotal: Double {
-        let today = DateFormatter(); today.dateFormat = "yyyy-MM-dd"
+        let today = DateFormatter()
+        today.dateFormat = "yyyy-MM-dd"
+        today.locale = Locale(identifier: "en_US_POSIX")
         let todayStr = today.string(from: Date())
         return manager.feedingEntries
-            .filter { $0.date == todayStr }
+            .filter { $0.date.hasPrefix(todayStr) }
             .reduce(0) { $0 + $1.quantity }
     }
     
     private var todayFeedingCount: Int {
-        let today = DateFormatter(); today.dateFormat = "yyyy-MM-dd"
+        let today = DateFormatter()
+        today.dateFormat = "yyyy-MM-dd"
+        today.locale = Locale(identifier: "en_US_POSIX")
         let todayStr = today.string(from: Date())
-        return manager.feedingEntries.filter { $0.date == todayStr }.count
+        return manager.feedingEntries.filter { $0.date.hasPrefix(todayStr) }.count
     }
 
     var body: some View {
@@ -805,7 +779,7 @@ private struct FeedingReportContent: View {
                         Text("TOTAL FED (TODAY)")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(Color.orange.opacity(0.8))
-                        Text("\(Int(todayFeedingTotal)) kg").font(.system(size: 24, weight: .bold))
+                        Text(String(format: "%.1f kg", todayFeedingTotal)).font(.system(size: 24, weight: .bold))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 16)
@@ -853,13 +827,13 @@ private struct FeedingReportContent: View {
                             ForEach(manager.feedingEntries.prefix(5)) { entry in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(entry.feedType.rawValue).font(.system(size: 15, weight: .semibold))
+                                        Text("\(entry.feedType.rawValue) - \(entry.targetGroup)").font(.system(size: 15, weight: .semibold))
                                         Text(entry.time.rawValue).font(.system(size: 13)).foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     VStack(alignment: .trailing, spacing: 4) {
                                         Text(entry.date).font(.system(size: 12)).foregroundColor(.secondary)
-                                        Text("\(Int(entry.quantity)) kg")
+                                        Text(String(format: "%.1f kg", entry.quantity))
                                             .font(.system(size: 13, weight: .bold))
                                             .foregroundColor(.orange)
                                     }

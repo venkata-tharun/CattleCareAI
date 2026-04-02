@@ -261,170 +261,191 @@ struct AnimalDetailView: View {
             Color(.systemGroupedBackground).ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // Header with back button
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.green)
-                                .frame(width: 40, height: 40)
-                        }
-
-                        Spacer()
-
-                        Text("Animal Details")
-                            .font(.system(size: 18, weight: .semibold))
-
-                        Spacer()
-
-                        Color.clear.frame(width: 40, height: 40)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
-
-                    // Animal profile card
-                    VStack(spacing: 16) {
-                        // Initials avatar (large)
-                        Text(animal.initials)
-                            .font(.system(size: 30, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 100, height: 100)
-                            .background(Color.green.opacity(0.1))
-                            .clipShape(Circle())
-
-                        Text(animal.name)
-                            .font(.system(size: 28, weight: .bold))
+                VStack(spacing: 0) {
+                    // Premium Header
+                    ZStack(alignment: .top) {
+                        LinearGradient(colors: [Color.green.opacity(0.12), Color.white], startPoint: .top, endPoint: .bottom)
+                            .frame(height: 180)
+                            .ignoresSafeArea()
 
                         HStack {
-                            Menu {
-                                ForEach(AnimalStatus.allCases) { s in
-                                    Button {
-                                        let oldStatus = currentStatus
-                                        currentStatus = s
-                                        animalManager.updateAnimalStatus(id: animal.id, animal: animal, newStatus: s) { success in
-                                            if !success {
-                                                currentStatus = oldStatus // Revert on failure
+                            Button {
+                                dismiss()
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.green)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.white)
+                                    .clipShape(Circle())
+                                    .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                            }
+
+                            Spacer()
+
+                            Text("Animal Details")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(.black.opacity(0.85))
+
+                            Spacer()
+
+                            Color.clear.frame(width: 44, height: 44)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 15)
+                    }
+                    .padding(.bottom, -60)
+
+                    // Animal profile card
+                    VStack(spacing: 18) {
+                        // Premium Avatar
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [.white, Color.green.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 110, height: 110)
+                                .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 8)
+                            
+                            Text(animal.initials)
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundColor(.green)
+                        }
+                        .padding(.top, 10)
+
+                        VStack(spacing: 6) {
+                            Text(animal.name)
+                                .font(.system(size: 28, weight: .bold))
+
+                            HStack(spacing: 8) {
+                                Menu {
+                                    ForEach(AnimalStatus.allCases) { s in
+                                        Button {
+                                            let oldStatus = currentStatus
+                                            currentStatus = s
+                                            animalManager.updateAnimalStatus(id: animal.id, animal: animal, newStatus: s) { success in
+                                                if !success {
+                                                    currentStatus = oldStatus // Revert on failure
+                                                }
                                             }
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Text(s.rawValue)
-                                            if currentStatus == s {
-                                                Image(systemName: "checkmark")
+                                        } label: {
+                                            HStack {
+                                                Text(s.rawValue)
+                                                if currentStatus == s {
+                                                    Image(systemName: "checkmark")
+                                                }
                                             }
                                         }
                                     }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        StatusPill(text: currentStatus.rawValue,
+                                                   bg: currentStatus.pillBackground,
+                                                   fg: currentStatus.pillText)
+                                        Image(systemName: "pencil.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.gray.opacity(0.5))
+                                    }
                                 }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    StatusPill(text: currentStatus.rawValue,
-                                               bg: currentStatus.pillBackground,
-                                               fg: currentStatus.pillText)
-                                    Image(systemName: "pencil.circle.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.gray.opacity(0.6))
-                                }
+                                .buttonStyle(.plain)
+
+                                Text("•")
+                                    .foregroundColor(.gray.opacity(0.5))
+
+                                Text("\(animal.breed) • \(animal.tag)")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.secondary)
                             }
-                            .buttonStyle(.plain)
-
-                            Text("•")
-                                .foregroundColor(.gray)
-
-                            Text(animal.breed)
-                                .font(.system(size: 16))
-                                .foregroundColor(.gray)
-
-                            Text("•")
-                                .foregroundColor(.gray)
-
-                            Text(animal.tag)
-                                .font(.system(size: 16))
-                                .foregroundColor(.gray)
                         }
-
-                        Divider()
-                            .padding(.top, 4)
 
                         // Stats Row (Inside card)
                         HStack(spacing: 0) {
-                            miniStat(label: "Age", value: animal.age.isEmpty ? "N/A" : animal.age, icon: "calendar")
-                            Divider().frame(height: 30)
-                            miniStat(label: "Weight", value: animal.weight.isEmpty ? "N/A" : animal.weight, icon: "scalemass.fill")
-                            Divider().frame(height: 30)
-                            miniStat(label: "Gender", value: animal.gender, icon: "venus.mars.fill")
+                            miniStat(label: "Age", value: animal.age.isEmpty ? "N/A" : animal.age, icon: "calendar", color: .green)
+                            divider
+                            miniStat(label: "Weight", value: animal.weight.isEmpty ? "N/A" : "\(animal.weight) kg", icon: "scalemass.fill", color: .blue)
+                            divider
+                            miniStat(label: "Gender", value: animal.gender, icon: "venus.mars.fill", color: .orange)
                         }
+                        .padding(.top, 8)
                     }
-                    .padding()
+                    .padding(22)
                     .frame(maxWidth: .infinity)
                     .background(Color.white)
-                    .cornerRadius(18)
-                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-                    .padding(.horizontal, 16)
+                    .cornerRadius(22)
+                    .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 6)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 20)
 
 
                     // Health Records Section
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 20) {
                         HStack {
                             Text("Health Records")
-                                .font(.system(size: 18, weight: .semibold))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(.black.opacity(0.85))
                             
                             Spacer()
                             
-                            // Date filter button
-                            Button {
-                                showDatePicker.toggle()
-                            } label: {
-                                Image(systemName: filterDate == nil ? "calendar" : "calendar.badge.minus")
-                                    .foregroundColor(filterDate == nil ? .gray : .red)
-                            }
-                            
-                            if showDatePicker {
-                                DatePicker(
-                                    "",
-                                    selection: Binding(
-                                        get: { filterDate ?? Date() },
-                                        set: { filterDate = $0; showDatePicker = false }
-                                    ),
-                                    displayedComponents: .date
-                                )
-                                .labelsHidden()
-                                .scaleEffect(0.9)
-                            }
-                            
-                            Menu {
+                            HStack(spacing: 12) {
+                                // Date filter button
                                 Button {
-                                    router.push(.addHealthRecord(animal))
+                                    showDatePicker.toggle()
                                 } label: {
-                                    Label("Add Health Record", systemImage: "stethoscope")
+                                    Image(systemName: filterDate == nil ? "calendar" : "calendar.badge.minus")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(filterDate == nil ? .gray : .red)
+                                        .frame(width: 36, height: 36)
+                                        .background(Color.gray.opacity(0.08))
+                                        .clipShape(Circle())
                                 }
                                 
-                                Button {
-                                    router.push(.addVaccineRecord(animal))
+                                Menu {
+                                    Button {
+                                        router.push(.addHealthRecord(animal))
+                                    } label: {
+                                        Label("Add Health Record", systemImage: "stethoscope")
+                                    }
+                                    
+                                    Button {
+                                        router.push(.addVaccineRecord(animal))
+                                    } label: {
+                                        Label("Add Vaccination", systemImage: "syringe")
+                                    }
                                 } label: {
-                                    Label("Add Vaccination", systemImage: "syringe")
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(.green)
+                                        .shadow(color: Color.green.opacity(0.2), radius: 4, x: 0, y: 3)
                                 }
-                            } label: {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(.green)
                             }
                         }
 
-                        VStack(spacing: 4) {
+                        if showDatePicker {
+                            DatePicker(
+                                "",
+                                selection: Binding(
+                                    get: { filterDate ?? Date() },
+                                    set: { filterDate = $0; showDatePicker = false }
+                                ),
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.graphical)
+                            .scaleEffect(0.9)
+                            .frame(height: 300)
+                            .padding(.bottom, 10)
+                        }
+
+                        VStack(spacing: 18) {
                             recordsListView
                         }
                     }
-                    .padding(18)
+                    .padding(22)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.white)
-                    .cornerRadius(18)
-                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-                    .padding(.horizontal, 16)
+                    .cornerRadius(22)
+                    .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 6)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 24)
 
-                    Spacer(minLength: 90)
+                    Spacer(minLength: 120)
                 }
             }
         }
@@ -571,20 +592,27 @@ struct AnimalDetailView: View {
         }
     }
 
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.gray.opacity(0.15))
+            .frame(width: 1, height: 26)
+            .padding(.horizontal, 5)
+    }
+
     @ViewBuilder
-    private func miniStat(label: String, value: String, icon: String) -> some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
+    private func miniStat(label: String, value: String, icon: String, color: Color) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 10))
-                    .foregroundColor(.green)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(color)
                 Text(label)
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
             Text(value)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.primary)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(.black.opacity(0.85))
         }
         .frame(maxWidth: .infinity)
     }
@@ -622,11 +650,11 @@ struct StatusPill: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 12, weight: .semibold))
+            .font(.system(size: 12, weight: .bold))
             .foregroundColor(fg)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(bg)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(bg.opacity(0.15))
             .clipShape(Capsule())
     }
 }
@@ -637,76 +665,92 @@ struct HealthRecordRow: View {
     var onDelete: () -> Void = {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(record.date)
-                        .font(.system(size: 13))
-                        .foregroundColor(.gray)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
 
                     Text(record.title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.black.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()
 
-                HStack(spacing: 8) {
-                    Text(record.status)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.green)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color.green.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                    
-                    Menu {
-                        Button { onEdit() } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        
-                        Button(role: .destructive) { onDelete() } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .padding(8)
-                            .background(Color.gray.opacity(0.1))
-                            .clipShape(Circle())
+                Menu {
+                    Button { onEdit() } label: {
+                        Label("Edit", systemImage: "pencil")
                     }
+                    
+                    Button(role: .destructive) { onDelete() } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.1))
+                        .clipShape(Circle())
                 }
             }
             
-            if let doctor = record.doctor, !doctor.isEmpty {
-                Label(doctor, systemImage: "stethoscope")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
+            HStack(spacing: 12) {
+                // Status Pill
+                Text(record.status)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(Capsule())
+
+                if let doctor = record.doctor, !doctor.isEmpty {
+                    Label(doctor, systemImage: "stethoscope")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
             }
             
             if let treatment = record.treatment, !treatment.isEmpty {
                 Text(treatment)
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
-                    .padding(.leading, 4)
-                    .padding(.vertical, 4)
+                    .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.gray.opacity(0.05))
-                    .cornerRadius(6)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                    )
             }
             
             if let cost = record.cost, !cost.isEmpty, cost != "0", cost != "0.0" {
                 HStack {
                     Spacer()
-                    Text("Cost: ₹\(cost)")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text("Cost:")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                        Text("₹\(cost)")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.black.opacity(0.85))
+                    }
                 }
             }
             
-            Divider().padding(.top, 4)
+            if record.id != -1 { // Only show divider if not the last item (simplified check)
+                Divider()
+                    .padding(.top, 5)
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
     }
 }
 

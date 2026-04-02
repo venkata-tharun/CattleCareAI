@@ -14,6 +14,8 @@ struct ForgotPasswordResetView: View {
 
     @State private var newPassword: String = ""
     @State private var confirmPassword: String = ""
+    @State private var isPasswordVisible = false
+    @State private var isConfirmPasswordVisible = false
     @State private var isLoading = false
     @State private var showError = false
     @State private var errorMessage = ""
@@ -52,6 +54,7 @@ struct ForgotPasswordResetView: View {
                             placeholder: "Enter new password",
                             text: $newPassword,
                             isSecure: true,
+                            isVisible: $isPasswordVisible,
                             keyboard: .default
                         )
                     }
@@ -64,6 +67,7 @@ struct ForgotPasswordResetView: View {
                             placeholder: "Confirm new password",
                             text: $confirmPassword,
                             isSecure: true,
+                            isVisible: $isConfirmPasswordVisible,
                             keyboard: .default
                         )
                     }
@@ -84,20 +88,13 @@ struct ForgotPasswordResetView: View {
                             isLoading = false
                             switch result {
                             case .success(let res):
-                                    if let user = res.user {
-                                        // Auto-login after reset
-                                        UserDefaults.standard.set(user.full_name, forKey: "userName")
-                                        UserDefaults.standard.set(user.farm_name, forKey: "farmName")
-                                        UserDefaults.standard.set(user.email_or_phone, forKey: "userEmail")
-                                        UserDefaults.standard.set(user.id, forKey: "userId")
-                                        NotificationCenter.default.post(name: .loginNotification, object: nil)
-                                    } else if let errMsg = res.error {
-                                        errorMessage = errMsg
-                                        showError = true
-                                    } else {
-                                        // Fallback if no user but success
-                                        NotificationCenter.default.post(name: .loginNotification, object: nil)
-                                    }
+                                if let errMsg = res.error {
+                                    errorMessage = errMsg
+                                    showError = true
+                                } else {
+                                    // Successfully reset! Navigate to login.
+                                    router.popToWelcomeAndLogin()
+                                }
                             case .failure(let err):
                                 errorMessage = err.localizedDescription
                                 showError = true
@@ -174,7 +171,17 @@ private struct IconField: View {
     let placeholder: String
     @Binding var text: String
     let isSecure: Bool
+    @Binding var isVisible: Bool
     let keyboard: UIKeyboardType
+
+    init(icon: String, placeholder: String, text: Binding<String>, isSecure: Bool, isVisible: Binding<Bool> = .constant(false), keyboard: UIKeyboardType) {
+        self.icon = icon
+        self.placeholder = placeholder
+        self._text = text
+        self.isSecure = isSecure
+        self._isVisible = isVisible
+        self.keyboard = keyboard
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -183,10 +190,26 @@ private struct IconField: View {
                 .frame(width: 26)
 
             if isSecure {
-                SecureField(placeholder, text: $text)
-                    .keyboardType(keyboard)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+                if isVisible {
+                    TextField(placeholder, text: $text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } else {
+                    SecureField(placeholder, text: $text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                
+                Button {
+                    isVisible.toggle()
+                } label: {
+                    Image(systemName: isVisible ? "eye.slash" : "eye")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.gray.opacity(0.7))
+                        .frame(width: 34, height: 34)
+                }
             } else {
                 TextField(placeholder, text: $text)
                     .keyboardType(keyboard)
@@ -203,6 +226,7 @@ private struct IconField: View {
         )
     }
 }
+
 
 #Preview {
     NavigationStack {

@@ -40,16 +40,17 @@ final class FeedDataManager: ObservableObject {
             }
         }
     }
-
-    func addFeedingEntry(_ entry: FeedingEntry) {
+    func addFeedingEntry(_ entry: FeedingEntry, completion: @escaping (Bool) -> Void = { _ in }) {
         NetworkManager.shared.addFeedEntry([
-            "date": entry.date, // "yyyy-MM-dd"
+            "date": entry.date,
             "feedTime": entry.time.rawValue,
             "feedType": entry.feedType.rawValue,
+            "targetGroup": entry.targetGroup,
             "quantity": entry.quantity,
             "notes": entry.notes
         ]) { [weak self] success in
             if success { self?.loadData() }
+            completion(success)
         }
     }
 
@@ -121,18 +122,24 @@ final class FeedDataManager: ObservableObject {
         NetworkManager.shared.getFeedEntries { [weak self] raw in
             guard let self = self else { return }
             self.feedingEntries = raw.compactMap { dict -> FeedingEntry? in
-                guard
-                    let date = dict["date"] as? String,
-                    let qt   = (dict["quantity"] as? NSNumber)?.doubleValue
-                else { return nil }
+                guard let date = dict["date"] as? String else { return nil }
+                
+                let qt: Double = {
+                    if let d = dict["quantity"] as? Double { return d }
+                    if let i = dict["quantity"] as? Int { return Double(i) }
+                    if let s = dict["quantity"] as? String, let d = Double(s) { return d }
+                    return 0.0
+                }()
                 
                 let time = FeedTime(rawValue: dict["feedTime"] as? String ?? dict["feed_time"] as? String ?? "Morning") ?? .morning
                 let type = FeedType(rawValue: dict["feedType"] as? String ?? dict["feed_type"] as? String ?? "Mixed Ration (TMR)") ?? .mixedRation
+                let tg   = dict["targetGroup"] as? String ?? dict["target_group"] as? String ?? "Cow"
                 
                 return FeedingEntry(
                     date: date,
                     time: time,
                     feedType: type,
+                    targetGroup: tg,
                     quantity: qt,
                     notes: dict["notes"] as? String ?? ""
                 )

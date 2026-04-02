@@ -36,46 +36,88 @@ struct PredictionResultView: View {
                 VStack(spacing: 24) {
                     
                     if prediction.diseaseName == "Non-Cattle Detected" {
-                        // MARK: - Non-Cattle Detected View
-                        VStack(spacing: 30) {
+                        // MARK: - Cattle Geofence Rejection View
+                        VStack(spacing: 24) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.orange.opacity(0.1))
-                                    .frame(width: 120, height: 120)
-                                
-                                Image(systemName: "questionmark.app.dashed")
-                                    .font(.system(size: 60))
-                                    .foregroundColor(.orange)
+                                    .fill(Color.red.opacity(0.08))
+                                    .frame(width: 130, height: 130)
+                                Circle()
+                                    .strokeBorder(Color.red.opacity(0.15), lineWidth: 2)
+                                    .frame(width: 130, height: 130)
+
+                                Image(systemName: "shield.slash.fill")
+                                    .font(.system(size: 52))
+                                    .foregroundColor(.red.opacity(0.8))
                             }
-                            
-                            VStack(spacing: 12) {
-                                Text("Detection Failed")
-                                    .font(.system(size: 24, weight: .bold))
+
+                            VStack(spacing: 10) {
+                                Text("Cattle Geofence Active")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.red.opacity(0.7))
+                                    .tracking(2)
+
+                                Text("Non-Cattle Image\nRejected")
+                                    .font(.system(size: 26, weight: .bold))
                                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.2))
-                                
-                                Text("Our AI couldn't find a cow in this image. Please try again with a clearer photo of your livestock.")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 20)
+
+                                Text("This image was not admitted for analysis")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.2))
+
+                                if let reason = prediction.symptoms.first {
+                                    Text(reason)
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 16)
+                                }
+                                Text("WHAT TO UPLOAD")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .tracking(1.5)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                ForEach([
+                                    "A clear, well-lit photo of a cow, bull, or calf",
+                                    "The animal should be the primary subject",
+                                    "Avoid blurry, distant, or obscured shots"
+                                ], id: \.self) { tip in
+                                    HStack(alignment: .top, spacing: 10) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.system(size: 14))
+                                        Text(tip)
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
                             }
-                            
+                            .padding(16)
+                            .background(Color(.systemGray6).opacity(0.6))
+                            .cornerRadius(14)
+
                             Button(action: { dismiss() }) {
-                                Text("Retry Analysis")
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 56)
-                                    .background(Color.orange)
-                                    .cornerRadius(16)
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.counterclockwise")
+                                    Text("Try Another Photo")
+                                        .font(.system(size: 17, weight: .bold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(Color(red: 0.1, green: 0.65, blue: 0.35))
+                                .cornerRadius(16)
                             }
                         }
-                        .padding(32)
+                        .padding(28)
                         .background(Color.white)
                         .cornerRadius(32)
                         .shadow(color: Color.black.opacity(0.05), radius: 20, y: 10)
                         .padding(.horizontal, 16)
                         .padding(.top, 40)
+
                         
                     } else {
                         // MARK: - Main Result Card

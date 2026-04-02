@@ -17,8 +17,8 @@ struct PashuCareApp: App {
     @StateObject private var calvingManager = CalvingDataManager()
     @StateObject private var visitorManager = VisitorDataManager()
     @StateObject private var sanitationManager = SanitationDataManager()
-    @StateObject private var logsManager = LogsDataManager()
     @StateObject private var animalManager = AnimalDataManager.shared
+    @StateObject private var logsManager = LogsDataManager()
 
     var body: some Scene {
         WindowGroup {
@@ -31,8 +31,8 @@ struct PashuCareApp: App {
                 .environmentObject(calvingManager)
                 .environmentObject(visitorManager)
                 .environmentObject(sanitationManager)
-                .environmentObject(logsManager)
                 .environmentObject(animalManager)
+                .environmentObject(logsManager)
         }
     }
 }

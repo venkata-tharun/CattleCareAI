@@ -15,60 +15,73 @@ struct FarmDashboardView: View {
     // Animation state
     @State private var isAnimating = false
 
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Good Morning"
+        case 12..<17: return "Good Afternoon"
+        case 17..<21: return "Good Evening"
+        default: return "Good Night"
+        }
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
+            Color(red: 0.95, green: 0.96, blue: 0.98).ignoresSafeArea()
+            
             VStack(spacing: 0) {
-                // Static Header
+                // Premium Header Section
+                ZStack(alignment: .bottom) {
+                    LinearGradient(colors: [Color.green.opacity(0.18), Color(red: 0.95, green: 0.96, blue: 0.98)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 140)
+                        .ignoresSafeArea()
+                    
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Good Morning, \(userName) 👋")
-                                .font(.system(size: 24, weight: .semibold))
+                            Text("\(greeting), \(userName) 👋")
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.black.opacity(0.85))
                             
                             Text("Let's manage your farm today")
-                                .font(.system(size: 14))
+                                .font(.system(size: 15))
                                 .foregroundColor(.secondary)
                         }
                         
                         Spacer()
                         
-                        // Animated Cow Image
                         Image("happy_cow")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 80, height: 80)
-                            .offset(y: isAnimating ? -8 : 8)
-                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
-                            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 10)
-                            .onAppear {
-                                isAnimating = true
-                            }
+                            .frame(width: 85, height: 85)
+                            .offset(y: isAnimating ? -6 : 6)
+                            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: isAnimating)
+                            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 12)
+                            .onAppear { isAnimating = true }
                     }
-                    .padding(.horizontal, 18)
-                    .padding(.top, 10)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+                }
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 22) {
-                        
-                             StatsCapsule(
-                                totalAnimals: animalManager.animals.count,
-                                milkToday: milkToday
-                            )
-                            .padding(.top, 6)
+                    VStack(spacing: 24) {
+                        // New Modern Stats Cards
+                        HStack(spacing: 16) {
+                            StatCard(title: "Total Animals", value: "\(animalManager.animals.count)", icon: "pawprint.circle.fill", color: .green)
+                            StatCard(title: "Milk Today", value: milkToday, icon: "drop.circle.fill", color: .blue)
+                        }
+                        .padding(.top, 10)
 
-                            FeatureGrid(router: router) // Pass router to FeatureGrid
+                        FeatureGrid(router: router)
 
-                            Spacer(minLength: 90)
+                        Spacer(minLength: 100)
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 12)
                 }
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
-        .background(Color.white.ignoresSafeArea())
         .onAppear {
             loadDashboardData()
         }
@@ -100,52 +113,50 @@ struct FarmDashboardView: View {
 }
 
 
-// MARK: - Stats Capsule
-private struct StatsCapsule: View {
-    let totalAnimals: Int
-    let milkToday: String
+// MARK: - Modern Stat Card
+private struct StatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
 
     var body: some View {
-        HStack(spacing: 0) {
-            statItem(title: "Total Animals", value: "\(totalAnimals)", valueColor: .black)
-            divider
-            statItem(title: "Milk Today", value: milkToday, valueColor: .blue)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(color)
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(.black.opacity(0.85))
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
         }
-        .padding(.vertical, 18)
-        .background(
-            RoundedRectangle(cornerRadius: 22)
-                .stroke(Color.green.opacity(0.35), lineWidth: 1.5)
-        )
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(Color.green.opacity(0.35))
-            .frame(width: 1, height: 46)
-            .padding(.horizontal, 14)
-    }
-
-    private func statItem(title: String, value: String, valueColor: Color) -> some View {
-        VStack(spacing: 10) {
-            Text(title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.gray)
-
-            Text(value)
-                .font(.system(size: 30, weight: .bold))
-                .foregroundColor(valueColor)
-        }
+        .padding(16)
         .frame(maxWidth: .infinity)
+        .background(Color.white)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 5)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(color.opacity(0.2), lineWidth: 1)
+        )
     }
 }
 
 // MARK: - Feature Grid (3 x 2)
 private struct FeatureGrid: View {
-    let router: NavigationRouter // Add router parameter
+    let router: NavigationRouter
 
     private let items: [FeatureTileModel] = [
-        .init(title: "Milk\nProduction", systemIcon: "mug.fill", border: .blue, route: .milkRecordList),
         .init(title: "Animals", systemIcon: "pawprint.fill", border: .red, route: .animalsList),
+        .init(title: "Milk\nProduction", systemIcon: "mug.fill", border: .blue, route: .milkRecordList),
         .init(title: "Visitors", systemIcon: "person.2.fill", border: .purple, route: .visitors),
         .init(title: "Sanitation", systemIcon: "cross.case.fill", border: .teal, route: .sanitation),
         .init(title: "Biosecurity", systemIcon: "shield.checkerboard", border: .orange, route: .biosecurityCheck),
@@ -164,12 +175,13 @@ private struct FeatureGrid: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 14) {
             ForEach(items) { item in
-                FeatureTile(item: item, router: router) // Pass router to each tile
+                FeatureTile(item: item, router: router)
             }
         }
         .padding(.top, 4)
     }
 }
+
 
 // MARK: - Updated FeatureTileModel with Route
 private struct FeatureTileModel: Identifiable {
@@ -199,27 +211,34 @@ private struct FeatureTile: View {
             }
         } label: {
             VStack(spacing: 10) {
-                Image(systemName: item.systemIcon)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundColor(item.border)
-                    .frame(width: 56, height: 56)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(item.border.opacity(0.08))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: item.systemIcon)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(item.border)
+                }
 
                 Text(item.title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(Color.black.opacity(0.82))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(2)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 4)
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
-            .frame(height: 132)
+            .frame(height: 115)
             .background(Color.white)
+            .cornerRadius(22)
+            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
             .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(item.border.opacity(0.55), lineWidth: 1.4)
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(item.border.opacity(0.15), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 5)
         }
         .buttonStyle(.plain)
     }

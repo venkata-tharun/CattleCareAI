@@ -67,6 +67,18 @@ struct LoginView: View {
                             isSecure: false,
                             trailing: nil
                         )
+                        .onChange(of: emailOrPhone) { oldValue, newValue in
+                            if newValue.allSatisfy(\.isNumber) {
+                                if newValue.count > 10 {
+                                    emailOrPhone = String(newValue.prefix(10))
+                                }
+                                if newValue.count == 10 && newValue.allSatisfy({ $0 == newValue.first }) {
+                                    emailOrPhone = ""
+                                    errorMessage = "Invalid phone number. All digits cannot be the same."
+                                    showError = true
+                                }
+                            }
+                        }
 
                         Spacer().frame(height: 14)
 
@@ -96,17 +108,33 @@ struct LoginView: View {
     // MARK: - Login Button
     Button(action: {
         guard !emailOrPhone.isEmpty, !password.isEmpty else { return }
+        
+        // Phone validation: if input is all digits, validate as phone number
+        let contact = emailOrPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+        if contact.allSatisfy(\.isNumber) {
+            guard contact.count == 10 else {
+                errorMessage = "Phone number must be exactly 10 digits."
+                showError = true
+                return
+            }
+            if contact.allSatisfy({ $0 == contact.first }) {
+                errorMessage = "Invalid phone number (too repetitive)."
+                showError = true
+                return
+            }
+            if !["6","7","8","9"].contains(String(contact.first!)) {
+                errorMessage = "Phone number must start with 6, 7, 8, or 9."
+                showError = true
+                return
+            }
+        }
         isLoading = true
         NetworkManager.shared.login(emailOrPhone: emailOrPhone, password: password) { result in
             isLoading = false
             switch result {
             case .success(let response):
                 if let user = response.user {
-                    // Persist user details locally for display
-                    UserDefaults.standard.set(user.full_name, forKey: "userName")
-                    UserDefaults.standard.set(user.farm_name, forKey: "farmName")
-                    UserDefaults.standard.set(user.email_or_phone, forKey: "userEmail")
-                    UserDefaults.standard.set(user.id, forKey: "userId")
+                    SessionManager.saveSession(user: user)   // ✅ centralised
                     withAnimation { isLoggedIn = true }
                 } else {
                     errorMessage = response.error ?? "Invalid credentials"

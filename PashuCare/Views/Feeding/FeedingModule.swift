@@ -32,6 +32,7 @@ struct FeedingEntry: Identifiable {
     let date: String
     let time: FeedTime
     let feedType: FeedType
+    let targetGroup: String
     let quantity: Double
     let notes: String
 }
@@ -86,112 +87,97 @@ struct FeedingHubView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var router: NavigationRouter
     @EnvironmentObject var feedManager: FeedDataManager
+    @State private var appearAnimated = false
 
     var body: some View {
-        ZStack {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+        ZStack(alignment: .bottom) {
+            Color(red: 0.95, green: 0.96, blue: 0.98).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.green)
-                            .frame(width: 40, height: 40)
+                // Premium Header
+                ZStack(alignment: .bottom) {
+                    Color.white
+                        .ignoresSafeArea(edges: .top)
+                        .frame(height: 50)
+                    
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.green)
+                                .frame(width: 44, height: 44)
+                        }
+
+                        Spacer()
+
+                        Text("Feed Management")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(.black.opacity(0.9))
+
+                        Spacer()
+
+                        Color.clear.frame(width: 44, height: 44)
                     }
-                    Spacer()
-                    Text("Feed Management")
-                        .font(.system(size: 18, weight: .bold))
-                    Spacer()
-                    Color.clear.frame(width: 40, height: 40)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.white)
+                .zIndex(1)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 24) {
                         
                         // Today's Overview
                         VStack(spacing: 16) {
                             HStack {
-                                Text("Today's Overview").font(.system(size: 16, weight: .bold)).foregroundColor(.secondary)
+                                Text("Today's Overview").font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
                                 Spacer()
-                                Text(Date(), style: .date).font(.system(size: 13, weight: .medium)).foregroundColor(.gray)
+                                Text(Date(), style: .date).font(.system(size: 13, weight: .medium, design: .rounded)).foregroundColor(Color(white: 0.6))
                             }
                             
                             HStack(spacing: 12) {
                                 let todayStr = {
                                     let df = DateFormatter()
                                     df.dateFormat = "yyyy-MM-dd"
+                                    df.locale = Locale(identifier: "en_US_POSIX")
                                     return df.string(from: Date())
                                 }()
-                                let todayTotal = feedManager.feedingEntries.filter { $0.date == todayStr }.reduce(0) { $0 + $1.quantity }
+                                let todayTotal = feedManager.feedingEntries.filter { 
+                                    $0.date.replacingOccurrences(of: "/", with: "-").hasPrefix(todayStr) 
+                                }.reduce(0) { $0 + $1.quantity }
                                 
-                                overviewMiniCard(title: "Total Fed", value: "\(Int(todayTotal)) kg", icon: "scalemass", color: .green)
-                                overviewMiniCard(title: "Stock Items", value: "\(feedManager.stockItems.count)", icon: "shippingbox.fill", color: .blue)
-                                overviewMiniCard(title: "Next Feed", value: "2:00 PM", icon: "clock", color: .purple)
+                                overviewMiniCard(title: "Total Fed", value: String(format: "%.1f kg", todayTotal), icon: "scalemass", color: .green, index: 0)
+                                overviewMiniCard(title: "Stock Items", value: "\(feedManager.stockItems.count)", icon: "shippingbox.fill", color: .blue, index: 1)
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
 
                         // Quick Actions
-                        VStack(spacing: 12) {
-                            Text("Quick Actions").font(.system(size: 16, weight: .bold)).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Quick Actions").font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
                             
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                                quickActionBtn(title: "Add Feed", icon: "plus.circle.fill", color: .green, route: .feedingEntry)
-                                quickActionBtn(title: "Update Stock", icon: "shippingbox.fill", color: .blue, route: .feedStock)
-                                quickActionBtn(title: "View Schedule", icon: "calendar.badge.clock", color: .indigo, route: .feedingSchedule)
+                            HStack(spacing: 12) {
+                                quickActionBtn(title: "Add Feed", icon: "plus.circle.fill", color: .green, route: .feedingEntry, index: 3)
+                                quickActionBtn(title: "Update Stock", icon: "shippingbox.fill", color: .blue, route: .feedStock, index: 4)
+                            }
+                            HStack(spacing: 12) {
+                                quickActionBtn(title: "View Schedule", icon: "calendar.badge.clock", color: .indigo, route: .feedingSchedule, index: 5)
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 20)
                         
                         // Modules List
-                        VStack(spacing: 12) {
-                            Text("Modules").font(.system(size: 16, weight: .bold)).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Modules").font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
                             
-                            moduleRow(title: "Feed Entry", desc: "Record daily consumption", icon: "leaf.fill", route: .feedingEntry)
-                            moduleRow(title: "Stock Management", desc: "Track inventory levels", icon: "shippingbox.fill", route: .feedStock)
-                            moduleRow(title: "Feeding Schedule", desc: "View & edit timings", icon: "calendar.badge.clock", route: .feedingSchedule)
-                            moduleRow(title: "Equipment Status", desc: "Monitor tools & machinery", icon: "gearshape.2.fill", route: .equipments)
-                        }
-                        .padding(.horizontal, 16)
-
-                        // Recent Activity
-                        if !feedManager.feedingEntries.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Recent Feed Entries").font(.system(size: 16, weight: .bold)).foregroundColor(.secondary).padding(.leading, 4)
-                                
-                                VStack(spacing: 0) {
-                                    ForEach(feedManager.feedingEntries.prefix(3)) { entry in
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(entry.feedType.rawValue).font(.system(size: 15, weight: .semibold))
-                                                Text("\(entry.quantity, specifier: "%.1f") kg at \(entry.time.rawValue)").font(.system(size: 13)).foregroundColor(.secondary)
-                                            }
-                                            Spacer()
-                                            VStack(alignment: .trailing, spacing: 4) {
-                                                Text(entry.date).font(.system(size: 11)).foregroundColor(.gray)
-                                            }
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 12)
-                                        
-                                        if entry.id != feedManager.feedingEntries.prefix(3).last?.id {
-                                            Divider().padding(.leading, 16)
-                                        }
-                                    }
-                                }
-                                .background(Color.white)
-                                .cornerRadius(16)
-                                .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+                            VStack(spacing: 12) {
+                                moduleRow(title: "Feed Entry", desc: "Record daily consumption", icon: "leaf.fill", route: .feedingEntry, index: 6)
+                                moduleRow(title: "Stock Management", desc: "Track inventory levels", icon: "shippingbox.fill", route: .feedStock, index: 7)
+                                moduleRow(title: "Feeding Schedule", desc: "View & edit timings", icon: "calendar.badge.clock", route: .feedingSchedule, index: 8)
+                                moduleRow(title: "Equipment Status", desc: "Monitor tools & machinery", icon: "gearshape.2.fill", route: .equipments, index: 9)
                             }
-                            .padding(.horizontal, 16)
                         }
+                        .padding(.horizontal, 20)
 
                         Spacer().frame(height: 50)
                     }
@@ -202,65 +188,100 @@ struct FeedingHubView: View {
         .toolbar(.hidden, for: .tabBar)
         .onAppear {
             feedManager.loadData()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                appearAnimated = true
+            }
         }
     }
     
     @ViewBuilder
-    private func overviewMiniCard(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon).font(.system(size: 18)).foregroundColor(color)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 11)).foregroundColor(.secondary)
-                Text(value).font(.system(size: 16, weight: .bold))
+    private func overviewMiniCard(title: String, value: String, icon: String, color: Color, index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(color)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .padding(14)
         .background(Color.white)
-        .cornerRadius(12)
+        .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+        .offset(y: appearAnimated ? 0 : 20)
+        .opacity(appearAnimated ? 1 : 0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05), value: appearAnimated)
     }
     
     @ViewBuilder
-    private func quickActionBtn(title: String, icon: String, color: Color, route: AppRoute) -> some View {
+    private func quickActionBtn(title: String, icon: String, color: Color, route: AppRoute, index: Int) -> some View {
         Button {
             router.push(route)
         } label: {
-            HStack {
-                Image(systemName: icon).foregroundColor(color)
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundColor(.primary)
-                Spacer()
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .foregroundColor(color)
+                    .font(.system(size: 18))
+                Text(title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary.opacity(0.9))
             }
-            .padding(14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
             .background(Color.white)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.02), radius: 5, y: 2)
         }
+        .offset(y: appearAnimated ? 0 : 20)
+        .opacity(appearAnimated ? 1 : 0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05), value: appearAnimated)
     }
     
     @ViewBuilder
-    private func moduleRow(title: String, desc: String, icon: String, route: AppRoute) -> some View {
+    private func moduleRow(title: String, desc: String, icon: String, route: AppRoute, index: Int) -> some View {
         Button {
             router.push(route)
         } label: {
             HStack(spacing: 16) {
                 ZStack {
-                    Circle().fill(Color.gray.opacity(0.1)).frame(width: 44, height: 44)
-                    Image(systemName: icon).font(.system(size: 18)).foregroundColor(.primary)
+                    Circle()
+                        .fill(Color(white: 0.95))
+                        .frame(width: 46, height: 46)
+                    Image(systemName: icon)
+                        .font(.system(size: 18))
+                        .foregroundColor(.black.opacity(0.8))
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 15, weight: .semibold)).foregroundColor(.primary)
-                    Text(desc).font(.system(size: 13)).foregroundColor(.secondary)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(.black.opacity(0.9))
+                    Text(desc)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(Color(white: 0.6))
                 }
                 Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 12)).foregroundColor(.gray)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.5))
             }
-            .padding(14)
+            .padding(16)
             .background(Color.white)
-            .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.02), radius: 6, y: 3)
         }
+        .buttonStyle(.plain)
+        .offset(y: appearAnimated ? 0 : 20)
+        .opacity(appearAnimated ? 1 : 0)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05), value: appearAnimated)
     }
+
 }
 
 // MARK: - Feeding Entry View
@@ -275,49 +296,77 @@ struct FeedingEntryView: View {
     @State private var quantity: String = ""
     @State private var notes: String = ""
     @State private var isSaving = false
+    @State private var appearAnimated = false
+    @State private var showErrorAlert = false
 
     private static let backendDf: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 
+    private var maxAvailableStock: Double {
+        if let stockItem = feedManager.stockItems.first(where: { $0.name == selectedFeedType.rawValue }) {
+            return stockItem.quantityValue
+        }
+        return 0.0
+    }
+    
+    private var hasSufficientStock: Bool {
+        guard let entered = Double(quantity) else { return false }
+        return entered > 0 && entered <= maxAvailableStock
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(.systemGroupedBackground).ignoresSafeArea()
+            Color(red: 0.95, green: 0.96, blue: 0.98).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.green)
-                            .frame(width: 40, height: 40)
+                // Premium Header
+                ZStack(alignment: .bottom) {
+                    Color.white
+                        .ignoresSafeArea(edges: .top)
+                        .frame(height: 50)
+                    
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.green)
+                                .frame(width: 44, height: 44)
+                        }
+
+                        Spacer()
+
+                        Text("Add Feed Entry")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(.black.opacity(0.9))
+
+                        Spacer()
+
+                        Color.clear.frame(width: 44, height: 44)
                     }
-                    Spacer()
-                    Text("Add Feed Entry")
-                        .font(.system(size: 18, weight: .bold))
-                    Spacer()
-                    Color.clear.frame(width: 40, height: 40)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.white)
+                .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+                .zIndex(1)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
                         
-                        
                         // Date Card
-                        feedCard {
+                        feedCard(index: 0) {
                             DatePicker("Date", selection: $date, displayedComponents: .date)
-                                .font(.system(size: 15, weight: .medium))
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundColor(.black.opacity(0.85))
                         }
 
-                        // Animal Target Card
-                        feedCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Target Group").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                        // Target Group Card
+                        feedCard(index: 1) {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Target Group").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 8) {
                                         ForEach(AnimalType.allCases) { a in
@@ -331,9 +380,9 @@ struct FeedingEntryView: View {
                         }
 
                         // Feed Type Card
-                        feedCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Feed Type").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                        feedCard(index: 2) {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Feed Type").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 8) {
                                         ForEach(FeedType.allCases) { t in
@@ -347,85 +396,95 @@ struct FeedingEntryView: View {
                         }
 
                         // Time Card
-                        feedCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Feeding Time").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
-                                HStack(spacing: 8) {
-                                    ForEach(FeedTime.allCases) { t in
-                                        chip(title: t.rawValue, isSelected: selectedTime == t) {
-                                            selectedTime = t
+                        feedCard(index: 3) {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Text("Feeding Time").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(FeedTime.allCases) { t in
+                                            chip(title: t.rawValue, isSelected: selectedTime == t) {
+                                                selectedTime = t
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Details Card
-                        feedCard {
-                            VStack(alignment: .leading, spacing: 16) {
+                        // Details Card (Quantity & Notes only)
+                        feedCard(index: 4) {
+                            VStack(alignment: .leading, spacing: 20) {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Quantity Fed").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                                    HStack {
+                                        Text("Quantity Fed").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
+                                        Spacer()
+                                        Text("Available: \(maxAvailableStock, specifier: "%.1f") kg")
+                                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                                            .foregroundColor(.blue)
+                                    }
+                                    
                                     HStack {
                                         TextField("0.0", text: $quantity)
                                             .keyboardType(.decimalPad)
-                                            .font(.system(size: 24, weight: .bold))
-                                        Text("kg").font(.system(size: 16, weight: .semibold)).foregroundColor(.secondary)
+                                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                                            .foregroundColor(.black.opacity(0.85))
+                                        Text("kg").font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(.secondary)
                                     }
+                                    
+                                    if let val = Double(quantity), val > maxAvailableStock {
+                                        Text("Insufficient stock! Please update stock first.")
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.red)
+                                    }
+                                    
                                     Divider()
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Photo Proof (Optional)").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
-                                    Button {
-                                        // Camera action mockup
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "camera.fill")
-                                            Text("Tap to capture photo")
-                                        }
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.green)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(Color.green.opacity(0.1))
-                                        .cornerRadius(10)
-                                    }
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Notes (Optional)").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                                    Text("Notes (Optional)").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(Color(white: 0.5))
                                     TextField("Add any observation...", text: $notes)
-                                        .font(.system(size: 15))
-                                        .padding(12)
-                                        .background(Color(.systemGray6))
-                                        .cornerRadius(10)
+                                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                                        .padding(16)
+                                        .background(Color(.systemGray6).opacity(0.6))
+                                        .cornerRadius(12)
                                 }
                             }
                         }
 
                         Spacer().frame(height: 100)
                     }
-                    .padding(16)
+                    .padding(20)
                 }
             }
 
             // Save Button
-            VStack(spacing: 4) {
-                
+            VStack(spacing: 0) {
+                LinearGradient(
+                    colors: [Color(red: 0.95, green: 0.96, blue: 0.98).opacity(0), Color(red: 0.95, green: 0.96, blue: 0.98)],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+                .frame(height: 40)
+                .allowsHitTesting(false)
+
                 Button {
                     isSaving = true
-                    if let qtyVal = Double(quantity) {
+                    if let qtyVal = Double(quantity), qtyVal <= maxAvailableStock {
                         let entry = FeedingEntry(
                             date: Self.backendDf.string(from: date),
                             time: selectedTime,
                             feedType: selectedFeedType,
+                            targetGroup: selectedAnimalType.rawValue,
                             quantity: qtyVal,
                             notes: notes
                         )
-                        feedManager.addFeedingEntry(entry)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        feedManager.addFeedingEntry(entry) { success in
                             isSaving = false
-                            dismiss()
+                            if success {
+                                dismiss()
+                            } else {
+                                showErrorAlert = true
+                            }
                         }
                     } else {
                         isSaving = false
@@ -434,44 +493,57 @@ struct FeedingEntryView: View {
                     HStack {
                         if isSaving { ProgressView().tint(.white).padding(.trailing, 8) }
                         Text(isSaving ? "Saving..." : "Save Entry")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(quantity.isEmpty ? Color.gray.opacity(0.5) : Color.green)
+                    .background(!hasSufficientStock ? Color(white: 0.7) : Color.green)
                     .cornerRadius(28)
-                    .shadow(color: Color.black.opacity(0.1), radius: 8, y: 4)
+                    .shadow(color: !hasSufficientStock ? .clear : Color.green.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
-                .disabled(quantity.isEmpty || isSaving)
+                .disabled(!hasSufficientStock || isSaving)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+                .background(Color(red: 0.95, green: 0.96, blue: 0.98))
             }
-            .padding(16)
-            .background(Color(.systemGroupedBackground))
         }
         .navigationBarHidden(true)
+        .alert(isPresented: $showErrorAlert) {
+            Alert(title: Text("Error"), message: Text("Failed to log feeding entry. Please ensure you have sufficient stock and check your connection."), dismissButton: .default(Text("OK")))
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                appearAnimated = true
+            }
+        }
     }
 
     @ViewBuilder
-    private func feedCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func feedCard<Content: View>(index: Int, @ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(16)
+            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.white)
-            .cornerRadius(16)
-            .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 4)
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
+            .offset(y: appearAnimated ? 0 : 20)
+            .opacity(appearAnimated ? 1 : 0)
+            .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(index) * 0.05), value: appearAnimated)
     }
     
     @ViewBuilder
     private func chip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.green : Color.gray.opacity(0.1))
-                .cornerRadius(20)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundColor(isSelected ? .white : .black.opacity(0.75))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(isSelected ? Color.green : Color(white: 0.95))
+                .cornerRadius(24)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -486,60 +558,89 @@ struct FeedStockView: View {
             Color(.systemGroupedBackground).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.green)
-                            .frame(width: 40, height: 40)
+                // Premium Header
+                ZStack(alignment: .top) {
+                    LinearGradient(colors: [Color.blue.opacity(0.12), Color.white], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 180)
+                        .ignoresSafeArea()
+
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.blue)
+                                .frame(width: 44, height: 44)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                        }
+
+                        Spacer()
+
+                        Text("Inventory Stock")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.black.opacity(0.85))
+
+                        Spacer()
+
+                        Color.clear.frame(width: 44, height: 44)
                     }
-                    Spacer()
-                    Text("Inventory Stock")
-                        .font(.system(size: 18, weight: .bold))
-                    Spacer()
-                    Color.clear.frame(width: 40, height: 40)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 15)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.white)
+                .padding(.bottom, -60)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
                         
                         
-                        VStack(spacing: 12) {
+                        VStack(spacing: 16) {
                             ForEach(feedManager.stockItems) { item in
-                                VStack(alignment: .leading, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 14) {
                                     HStack {
-                                        Text(item.name).font(.system(size: 15, weight: .semibold))
+                                        Text(item.name)
+                                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                                            .foregroundColor(.black.opacity(0.85))
                                         Spacer()
-                                        Text(item.quantityDisplay).font(.system(size: 14, weight: .bold)).foregroundColor(.secondary)
+                                        Text(item.quantityDisplay)
+                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                            .foregroundColor(.secondary)
                                     }
                                     
-                                    // Progress bar representation without generic "alert" colors or popups
-                                    // Uses yellow for low, green for everything else based on requested style.
                                     let percentage = min(max(item.quantityValue / 2000.0, 0.05), 1.0)
                                     
-                                    GeometryReader { geo in
-                                        ZStack(alignment: .leading) {
-                                            Capsule()
-                                                .fill(Color.gray.opacity(0.1))
-                                                .frame(height: 8)
-                                            Capsule()
-                                                .fill(item.status.barColor)
-                                                .frame(width: geo.size.width * CGFloat(percentage), height: 8)
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        GeometryReader { geo in
+                                            ZStack(alignment: .leading) {
+                                                Capsule()
+                                                    .fill(Color.gray.opacity(0.08))
+                                                    .frame(height: 10)
+                                                
+                                                Capsule()
+                                                    .fill(LinearGradient(colors: [item.status.barColor.opacity(0.8), item.status.barColor], startPoint: .leading, endPoint: .trailing))
+                                                    .frame(width: geo.size.width * CGFloat(percentage), height: 10)
+                                            }
+                                        }
+                                        .frame(height: 10)
+                                        
+                                        if item.status == .low {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "exclamationmark.triangle.fill")
+                                                    .font(.system(size: 10))
+                                                Text("Low stock level - consider restocking")
+                                                    .font(.system(size: 11, weight: .medium))
+                                            }
+                                            .foregroundColor(Color.orange.opacity(0.9))
+                                            .padding(.top, 2)
                                         }
                                     }
-                                    .frame(height: 8)
-                                    
-                                    if item.status == .low {
-                                        Text("Low stock level - consider restocking").font(.system(size: 11)).foregroundColor(Color.yellow.opacity(0.8))
-                                    }
                                 }
-                                .padding(16)
+                                .padding(20)
                                 .background(Color.white)
-                                .cornerRadius(16)
-                                .shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+                                .cornerRadius(22)
+                                .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
                             }
                         }
                         
@@ -554,20 +655,26 @@ struct FeedStockView: View {
                 Button {
                     router.push(.addStock)
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
                         Text("Add Stock")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(height: 60)
                     .background(Color.blue)
-                    .cornerRadius(28)
-                    .shadow(color: Color.black.opacity(0.1), radius: 8, y: 4)
+                    .cornerRadius(30)
+                    .shadow(color: Color.blue.opacity(0.3), radius: 12, x: 0, y: 6)
                 }
             }
-            .padding(16)
-            .background(Color(.systemGroupedBackground))
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
+            .background(
+                LinearGradient(colors: [Color(.systemGroupedBackground).opacity(0), Color(.systemGroupedBackground)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 120)
+            )
         }
         .navigationBarHidden(true)
         .onAppear {
@@ -593,35 +700,84 @@ struct AddStockView: View {
             Color(.systemGroupedBackground).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 18, weight: .semibold)).foregroundColor(.blue).frame(width: 40, height: 40)
+                // Premium Header
+                ZStack(alignment: .top) {
+                    LinearGradient(colors: [Color.blue.opacity(0.12), Color.white], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 180)
+                        .ignoresSafeArea()
+
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.blue)
+                                .frame(width: 44, height: 44)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                        }
+
+                        Spacer()
+
+                        Text("Add Feed Stock")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.black.opacity(0.85))
+
+                        Spacer()
+
+                        Color.clear.frame(width: 44, height: 44)
                     }
-                    Spacer(); Text("Add Feed Stock").font(.system(size: 18, weight: .bold)); Spacer(); Color.clear.frame(width: 40, height: 40)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 15)
                 }
-                .padding(.horizontal, 12).padding(.vertical, 10).background(Color.white)
+                .padding(.bottom, -60)
 
                 ScrollView {
                     VStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Select Item").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Select Item")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 4)
+                            
                             FlowLayout(items: quickTypes) { type in
                                 Button { itemName = type } label: {
-                                    Text(type).font(.system(size: 14)).foregroundColor(itemName == type ? .white : .primary)
-                                        .padding(.horizontal, 14).padding(.vertical, 8)
-                                        .background(itemName == type ? Color.blue : Color.gray.opacity(0.1))
-                                        .cornerRadius(20)
+                                    Text(type)
+                                        .font(.system(size: 14, weight: itemName == type ? .bold : .medium))
+                                        .foregroundColor(itemName == type ? .white : .primary.opacity(0.7))
+                                        .padding(.horizontal, 18)
+                                        .padding(.vertical, 10)
+                                        .background(itemName == type ? Color.blue : Color.gray.opacity(0.08))
+                                        .cornerRadius(22)
                                 }
                             }
                         }
-                        .padding(16).background(Color.white).cornerRadius(16).shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+                        .padding(20)
+                        .background(Color.white)
+                        .cornerRadius(22)
+                        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
 
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Quantity (kg)").font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
-                            TextField("0.0", text: $quantity).keyboardType(.decimalPad).font(.system(size: 24, weight: .bold))
-                                .padding(16).background(Color(.systemGray6)).cornerRadius(12)
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Quantity (kg)")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundColor(.secondary)
+                                .padding(.leading, 4)
+                            
+                            TextField("0.0", text: $quantity)
+                                .keyboardType(.numbersAndPunctuation)
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .padding(20)
+                                .background(Color(.systemGray6).opacity(0.5))
+                                .cornerRadius(16)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                                )
                         }
-                        .padding(16).background(Color.white).cornerRadius(16).shadow(color: Color.black.opacity(0.03), radius: 5, y: 2)
+                        .padding(20)
+                        .background(Color.white)
+                        .cornerRadius(22)
+                        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 5)
                     }
                     .padding(16)
                 }
@@ -630,7 +786,7 @@ struct AddStockView: View {
             VStack(spacing: 8) {
                 Button {
                     isSaving = true
-                    if let val = Double(quantity), val > 0 {
+                    if let val = Double(quantity), val != 0 {
                         feedManager.addStock(to: itemName, amount: val) { success in
                             isSaving = false
                             if success {
@@ -642,9 +798,13 @@ struct AddStockView: View {
                     } else { isSaving = false }
                 } label: {
                     Text(isSaving ? "Saving..." : "Save Stock")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white).frame(maxWidth: .infinity).frame(height: 56)
-                        .background(quantity.isEmpty ? Color.gray.opacity(0.5) : Color.blue).cornerRadius(28)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 60)
+                        .background(quantity.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                        .cornerRadius(30)
+                        .shadow(color: (quantity.isEmpty ? Color.clear : Color.blue.opacity(0.3)), radius: 12, x: 0, y: 6)
                 }
                 .disabled(quantity.isEmpty || isSaving)
             }

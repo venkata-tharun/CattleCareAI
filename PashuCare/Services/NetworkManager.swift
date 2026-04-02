@@ -182,6 +182,20 @@ class NetworkManager {
         )
     }
 
+    func deleteAccount(completion: @escaping (Bool) -> Void) {
+        request(
+            path: "/api/auth/profile/delete",
+            method: "DELETE",
+            completion: { (result: Result<SimpleMessageResponse, Error>) in
+                switch result {
+                case .success: completion(true)
+                case .failure: completion(false)
+                }
+            }
+        )
+    }
+
+
     // ── Animals ─────────────────────────────────────────────────────
     func getAnimals(completion: @escaping ([Animal]) -> Void) {
         request(path: "/api/animals", method: "GET") { (r: Result<[Animal], Error>) in
@@ -376,11 +390,17 @@ class NetworkManager {
     }
 
     // ── Sanitation ──────────────────────────────────────────────────
-    func getSanitationScore(completion: @escaping (Int) -> Void) {
-        request(path: "/api/sanitation/score") { (r: Result<[String: Int], Error>) in
-            completion((try? r.get())?["score"] ?? 85)
+    func getSanitationScore(completion: @escaping (Int?) -> Void) {
+        request(path: "/api/sanitation/score") { (r: Result<[String: Int?], Error>) in
+            if let dict = try? r.get() {
+                completion(dict["score"] ?? nil)
+            } else {
+                completion(nil)
+            }
         }
     }
+
+
 
     func saveSanitationChecklist(_ body: [String: Any], completion: @escaping (Bool) -> Void) {
         postItem(path: "/api/sanitation/checklist", body: body, completion: completion)
@@ -411,16 +431,6 @@ class NetworkManager {
 
         var body = Data()
         
-        // Add fields
-        let fields = [
-            "diseaseName": diseaseName,
-            "confidence": confidence,
-            "status": status,
-            "symptoms": (try? JSONSerialization.data(withJSONObject: symptoms).base64EncodedString()) ?? "[]",
-            "precautions": (try? JSONSerialization.data(withJSONObject: precautions).base64EncodedString()) ?? "[]"
-        ]
-        
-        // Wait, I should probably pass them as strings or JSON strings in the form
         var textFields: [String: String] = [
             "diseaseName": diseaseName,
             "confidence": confidence,
@@ -473,7 +483,7 @@ class NetworkManager {
     private func fetchList(path: String, completion: @escaping ([[String: Any]]) -> Void) {
         guard let url = URL(string: baseURL + path) else { return }
         var req = URLRequest(url: url)
-        req.httpShouldHandleCookies = true
+        req.httpShouldHandleCookies = true   // ✅ forward session cookie
         URLSession.shared.dataTask(with: req) { data, _, _ in
             if let data = data,
                let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
@@ -537,5 +547,5 @@ struct AnimalResponse: Decodable, Identifiable {
 struct DashboardStats: Decodable {
     let totalAnimals: Int
     let milkToday: String
-    // We can add recentLogs if needed later
+    let nextFeedTime: String?
 }

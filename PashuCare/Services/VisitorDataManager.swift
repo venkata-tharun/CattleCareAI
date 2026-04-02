@@ -116,4 +116,8 @@ class VisitorDataManager: ObservableObject {
     var checkedOutCount: Int {
         visitors.filter { $0.status == .checkedOut && Calendar.current.isDateInToday($0.date) }.count
     }
+    var rejectedCount: Int {
+        visitors.filter { $0.status == .rejected && Calendar.current.isDateInToday($0.date) }.count
+    }
 }
+

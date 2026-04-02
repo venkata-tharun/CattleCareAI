@@ -1,6 +1,7 @@
 import SwiftUI
 import TensorFlowLite
 import Vision
+import CoreML
 
 class AIPredictionService {
     static let shared = AIPredictionService()
@@ -8,6 +9,9 @@ class AIPredictionService {
     private var interpreter: Interpreter?
     private let modelFilename = "model"
     private let modelExtension = "tflite"
+    
+    // CoreML cow classifier (trained with Create ML)
+    private var cowClassifier: VNCoreMLModel?
     
     // Constants matching standard TFLite models
     private let batchSize = 1
@@ -19,6 +23,7 @@ class AIPredictionService {
         loadModel()
     }
     
+    // Loads the TFLite disease model
     private func loadModel() {
         guard let modelPath = Bundle.main.path(forResource: modelFilename, ofType: modelExtension) else {
             print("Failed to load model file.")
@@ -34,18 +39,6 @@ class AIPredictionService {
     }
     
     func predict(image: UIImage) async -> DiseasePrediction? {
-        // Pre-screen the image using Vision framework
-        let isCow = await isCowImage(image)
-        if !isCow {
-            return DiseasePrediction(
-                diseaseName: "Non-Cattle Detected",
-                confidence: "0%",
-                status: "Warning",
-                symptoms: ["The uploaded image does not appear to be a cow or is too unclear for AI analysis."],
-                precautions: ["Please upload a clear, focused image of the cattle's affected area.", "Ensure proper lighting and avoid background clutter."]
-            )
-        }
-
         guard let interpreter = interpreter else { return nil }
         
         // 1. Preprocess image: Resize & Pixel Data
@@ -71,6 +64,8 @@ class AIPredictionService {
             let confidenceValue = probabilities[maxIndex]
             let confidence = String(format: "%.0f%%", (confidenceValue * 100))
             
+            print("🧠 Disease model confidence: \(String(format: "%.1f%%", confidenceValue * 100)) for class \(maxIndex)")
+            
             // Map index to disease
             return mapResult(index: maxIndex, confidence: confidence)
             
@@ -80,6 +75,7 @@ class AIPredictionService {
         }
     }
     
+
     private func mapResult(index: Int, confidence: String) -> DiseasePrediction {
         // Model labels: 0 = foot-and-mouth, 1 = healthy, 2 = lumpy
         switch index {
@@ -89,7 +85,7 @@ class AIPredictionService {
                 confidence: confidence,
                 status: "Critical",
                 symptoms: ["Blisters on mouth & hooves", "Lameness", "Fever", "Excessive salivation"],
-                precautions: ["Strict isolation", "Report to local authorities", "Do not move animals", "Disinfect premises"]
+                precautions: ["Strict isolation", "Report to local authorities", "Do not move animals", "Regularly disinfect sheds and waling areas with citric acid"]
             )
         case 1:
             return DiseasePrediction(
@@ -115,44 +111,6 @@ class AIPredictionService {
                 symptoms: ["Could not determine symptoms"],
                 precautions: ["Contact your veterinarian for manual diagnosis"]
             )
-        }
-    }
-    
-    // MARK: - Validation
-    private func isCowImage(_ image: UIImage) async -> Bool {
-        guard let cgImage = image.cgImage else { return false }
-        
-        return await withCheckedContinuation { continuation in
-            let request = VNClassifyImageRequest { request, error in
-                guard let results = request.results as? [VNClassificationObservation], error == nil else {
-                    continuation.resume(returning: false)
-                    return
-                }
-                
-                // Common ImageNet classes for cattle/bovines
-                let cattleKeywords = ["ox", "bull", "bison", "water buffalo", "ram", "bovine", "cow", "cattle", "calf", "zebu", "yak"]
-                
-                // Check if any of the top results (with at least 1% confidence) match our keywords
-                let isCattle = results.contains { observation in
-                    guard observation.confidence > 0.01 else { return false }
-                    let identifier = observation.identifier.lowercased()
-                    return cattleKeywords.contains { keyword in identifier.contains(keyword) }
-                }
-                
-                continuation.resume(returning: isCattle)
-            }
-            
-            #if targetEnvironment(simulator)
-                request.usesCPUOnly = true // Prevents Neural Engine errors on some simulators
-            #endif
-            
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                print("Vision classification failed: \(error)")
-                continuation.resume(returning: false)
-            }
         }
     }
 }

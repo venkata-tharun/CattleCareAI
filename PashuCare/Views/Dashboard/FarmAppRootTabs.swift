@@ -188,22 +188,7 @@ struct FarmAppRootTabs: View {
             ReportDetailView(reportType: type)
                 .environmentObject(router)
                 .toolbar(.hidden, for: .tabBar)
-        case .logs:
-            LogsView()
-                .environmentObject(router)
-                .toolbar(.hidden, for: .tabBar)
-        case .logDetail(let log):
-            LogDetailView(log: log)
-                .environmentObject(router)
-                .toolbar(.hidden, for: .tabBar)
-        case .addLog:
-            AddLogView()
-                .environmentObject(router)
-                .toolbar(.hidden, for: .tabBar)
-        case .editLog(let log):
-            AddLogView(existingLog: log)
-                .environmentObject(router)
-                .toolbar(.hidden, for: .tabBar)
+
         case .addStock:
             AddStockView()
                 .environmentObject(router)
@@ -252,6 +237,20 @@ struct FarmAppRootTabs: View {
                 .toolbar(.hidden, for: .tabBar)
         case .milkingMachineDetail:
             MilkingMachineDetailView()
+                .environmentObject(router)
+                .toolbar(.hidden, for: .tabBar)
+        case .logs:
+            LogsView()
+                .environmentObject(router)
+                .toolbar(.hidden, for: .tabBar)
+        case .addLog:
+            AddLogView()
+                .toolbar(.hidden, for: .tabBar)
+        case .editLog(let log):
+            AddLogView(existingLog: log)
+                .toolbar(.hidden, for: .tabBar)
+        case .logDetail(let log):
+            LogDetailView(log: log)
                 .environmentObject(router)
                 .toolbar(.hidden, for: .tabBar)
         default:
@@ -304,6 +303,15 @@ struct FarmAppRootTabs: View {
                 .toolbar(.hidden, for: .tabBar)
         case .helpSupport:
             HelpSupportView()
+                .toolbar(.hidden, for: .tabBar)
+        case .userGuide:
+            UserGuideView()
+                .toolbar(.hidden, for: .tabBar)
+        case .privacyPolicy:
+            PrivacyPolicyView()
+                .toolbar(.hidden, for: .tabBar)
+        case .termsOfService:
+            TermsOfServiceView()
                 .toolbar(.hidden, for: .tabBar)
         default:
             EmptyView()

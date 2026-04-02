@@ -17,9 +17,12 @@ struct SignupView: View {
     @State private var farmName: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
+    @State private var isPasswordVisible: Bool = false
+    @State private var isConfirmPasswordVisible: Bool = false
     @State private var isLoading: Bool = false
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
+
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,6 +67,12 @@ struct SignupView: View {
                         isSecure: false,
                         keyboard: .default
                     )
+                    .onChange(of: fullName) { oldValue, newValue in
+                        let filtered = newValue.filter { $0.isLetter || $0.isWhitespace }
+                        if filtered != newValue {
+                            fullName = filtered
+                        }
+                    }
 
                     labeledField(
                         title: "Phone or Email",
@@ -74,8 +83,15 @@ struct SignupView: View {
                         keyboard: .emailAddress
                     )
                     .onChange(of: phoneOrEmail) { oldValue, newValue in
-                        if newValue.allSatisfy(\.isNumber) && newValue.count > 10 {
-                            phoneOrEmail = String(newValue.prefix(10))
+                        if newValue.allSatisfy(\.isNumber) {
+                            if newValue.count > 10 {
+                                phoneOrEmail = String(newValue.prefix(10))
+                            }
+                            if newValue.count == 10 && newValue.allSatisfy({ $0 == newValue.first }) {
+                                phoneOrEmail = ""
+                                errorMessage = "Invalid phone number. All digits cannot be the same."
+                                showError = true
+                            }
                         }
                     }
 
@@ -87,6 +103,13 @@ struct SignupView: View {
                         isSecure: false,
                         keyboard: .default
                     )
+                    .onChange(of: farmName) { oldValue, newValue in
+                        let filtered = newValue.filter { $0.isLetter || $0.isWhitespace }
+                        if filtered != newValue {
+                            farmName = filtered
+                        }
+                    }
+
 
                     labeledField(
                         title: "Password",
@@ -94,6 +117,7 @@ struct SignupView: View {
                         placeholder: "Create a password",
                         text: $password,
                         isSecure: true,
+                        isPasswordVisible: $isPasswordVisible,
                         keyboard: .default
                     )
 
@@ -103,6 +127,7 @@ struct SignupView: View {
                         placeholder: "Confirm your password",
                         text: $confirmPassword,
                         isSecure: true,
+                        isPasswordVisible: $isConfirmPasswordVisible,
                         keyboard: .default
                     )
 
@@ -118,14 +143,41 @@ struct SignupView: View {
                         let contact = phoneOrEmail.trimmingCharacters(in: .whitespacesAndNewlines)
                         let isPhone = contact.allSatisfy(\.isNumber)
                         
+                        let namePattern = "^[a-zA-Z\\s]{2,}$"
+                        let namePredicate = NSPredicate(format:"SELF MATCHES %@", namePattern)
+                        
+                        guard namePredicate.evaluate(with: fullName.trimmingCharacters(in: .whitespaces)) else {
+                            errorMessage = "Full Name must contain only alphabets and be at least 2 characters."
+                            showError = true
+                            return
+                        }
+                        
+                        guard namePredicate.evaluate(with: farmName.trimmingCharacters(in: .whitespaces)) else {
+                            errorMessage = "Farm Name must contain only alphabets and be at least 2 characters."
+                            showError = true
+                            return
+                        }
+
                         if isPhone {
                             guard contact.count == 10 else {
                                 errorMessage = "Phone number must be exactly 10 digits."
                                 showError = true
                                 return
                             }
+                            if contact.allSatisfy({ $0 == contact.first }) {
+                                errorMessage = "Invalid phone number (too repetitive)."
+                                showError = true
+                                return
+                            }
+                            if !["6","7","8","9"].contains(String(contact.first!)) {
+                                errorMessage = "Phone number must start with 6, 7, 8, or 9."
+                                showError = true
+                                return
+                            }
                         } else {
-                            guard contact.contains("@") && contact.contains(".") else {
+                            let emailPattern = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+                            let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailPattern)
+                            guard emailPredicate.evaluate(with: contact) else {
                                 errorMessage = "Please enter a valid email or a 10-digit phone number."
                                 showError = true
                                 return
@@ -145,6 +197,7 @@ struct SignupView: View {
                             showError = true
                             return
                         }
+
                         
                         isLoading = true
                         NetworkManager.shared.register(
@@ -160,9 +213,10 @@ struct SignupView: View {
                                     errorMessage = res.error!
                                     showError = true
                                 } else {
-                                    // Navigate to OTP screen instead of root
-                                    router.push(.otp(phoneOrEmail, true))
+                                    // Navigate to Login screen instead of OTP
+                                    router.pop()
                                 }
+
                             case .failure(let err):
                                 errorMessage = err.localizedDescription
                                 showError = true
@@ -225,6 +279,7 @@ struct SignupView: View {
         placeholder: String,
         text: Binding<String>,
         isSecure: Bool,
+        isPasswordVisible: Binding<Bool>? = nil,
         keyboard: UIKeyboardType
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -239,8 +294,28 @@ struct SignupView: View {
                     .frame(width: 26)
 
                 if isSecure {
-                    SecureField(placeholder, text: text)
-                        .font(.system(size: 18))
+                    if let isVisible = isPasswordVisible {
+                        if isVisible.wrappedValue {
+                            TextField(placeholder, text: text)
+                                .font(.system(size: 18))
+                                .textInputAutocapitalization(.never)
+                        } else {
+                            SecureField(placeholder, text: text)
+                                .font(.system(size: 18))
+                        }
+                        
+                        Button {
+                            isVisible.wrappedValue.toggle()
+                        } label: {
+                            Image(systemName: isVisible.wrappedValue ? "eye.slash" : "eye")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Color(.systemGray3))
+                                .frame(width: 34, height: 34)
+                        }
+                    } else {
+                        SecureField(placeholder, text: text)
+                            .font(.system(size: 18))
+                    }
                 } else {
                     TextField(placeholder, text: text)
                         .font(.system(size: 18))

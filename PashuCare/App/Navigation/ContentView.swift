@@ -60,21 +60,17 @@ enum AppRoute: Hashable {
     case reportsList
     case reportDetail(ReportType)
 
-    // Logs
-    case logs
-    case logDetail(FarmLog)
-    case addLog
-    case editLog(FarmLog)
-    
     // Transactions
     case transactions
     case newTransaction(String) // category: "Income" or "Expense"
 
-    // Settings
     case settings
     case profileSettings
     case notificationSettings
     case helpSupport
+    case userGuide
+    case privacyPolicy
+    case termsOfService
 
     // AI Disease Prediction
     case aiDiseasePrediction
@@ -94,6 +90,12 @@ enum AppRoute: Hashable {
     case equipments
     case chaffCutterDetail
     case milkingMachineDetail
+    
+    // Logs
+    case logs
+    case addLog
+    case editLog(FarmLog)
+    case logDetail(FarmLog)
 
     // Hashable conformance for associated value types
     func hash(into hasher: inout Hasher) {
@@ -141,14 +143,13 @@ enum AppRoute: Hashable {
         case .biosecurityCheck: hasher.combine(60)
         case .reportsList: hasher.combine(27)
         case .reportDetail(let r): hasher.combine(28); hasher.combine(r.rawValue)
-        case .logs: hasher.combine(29)
-        case .logDetail(let l): hasher.combine(30); hasher.combine(l.id)
-        case .addLog: hasher.combine(31)
-        case .editLog(let l): hasher.combine(32); hasher.combine(l.id)
         case .settings: hasher.combine(33)
         case .profileSettings: hasher.combine(34)
         case .notificationSettings: hasher.combine(35)
         case .helpSupport: hasher.combine(36)
+        case .userGuide: hasher.combine(361)
+        case .privacyPolicy: hasher.combine(362)
+        case .termsOfService: hasher.combine(363)
         case .aiDiseasePrediction: hasher.combine(37)
         case .aiImagePreview(let img):
             hasher.combine(38)
@@ -173,6 +174,11 @@ enum AppRoute: Hashable {
         case .equipments: hasher.combine(57)
         case .chaffCutterDetail: hasher.combine(55)
         case .milkingMachineDetail: hasher.combine(56)
+            
+        case .logs: hasher.combine(100)
+        case .addLog: hasher.combine(101)
+        case .editLog(let l): hasher.combine(102); hasher.combine(l.id)
+        case .logDetail(let l): hasher.combine(103); hasher.combine(l.id)
         }
     }
 
@@ -188,9 +194,9 @@ enum AppRoute: Hashable {
              (.sanitation, .sanitation), (.sanitationChecklist, .sanitationChecklist),
              (.biosecurityCheck, .biosecurityCheck),
              (.reportsList, .reportsList),
-             (.logs, .logs), (.addLog, .addLog),
              (.settings, .settings), (.profileSettings, .profileSettings),
              (.notificationSettings, .notificationSettings), (.helpSupport, .helpSupport),
+             (.userGuide, .userGuide), (.privacyPolicy, .privacyPolicy), (.termsOfService, .termsOfService),
              (.aiDiseasePrediction, .aiDiseasePrediction):
             return true
         case (.editMilk(let a), .editMilk(let b)): return a.id == b.id
@@ -205,8 +211,6 @@ enum AppRoute: Hashable {
         case (.visitorDetail(let a), .visitorDetail(let b)): return a.id == b.id
         case (.editVisitor(let a), .editVisitor(let b)): return a.id == b.id
         case (.reportDetail(let a), .reportDetail(let b)): return a == b
-        case (.logDetail(let a), .logDetail(let b)): return a.id == b.id
-        case (.editLog(let a), .editLog(let b)): return a.id == b.id
         case (.aiImagePreview(let a), .aiImagePreview(let b)): return a === b
         case (.aiPredictionResult(let i1, let p1), .aiPredictionResult(let i2, let p2)): return i1 === i2 && p1 == p2
         case (.addStock, .addStock): return true
@@ -220,6 +224,10 @@ enum AppRoute: Hashable {
             
         case (.equipments, .equipments), (.chaffCutterDetail, .chaffCutterDetail), (.milkingMachineDetail, .milkingMachineDetail): return true
             
+        case (.logs, .logs), (.addLog, .addLog): return true
+        case (.editLog(let a), .editLog(let b)): return a.id == b.id
+        case (.logDetail(let a), .logDetail(let b)): return a.id == b.id
+            
         default: return false
         }
     }
@@ -230,19 +238,27 @@ struct ContentView: View {
     @StateObject private var tabRouter = TabRouter()
     @State private var isLoggedIn = false
 
-    @State private var showSplash = true
-    
+    // ── Splash + session-check race fix ───────────────────────────────
+    // We keep the splash visible until BOTH the minimum display time
+    // AND the /me session check have completed, so the user never sees
+    // the Welcome screen flash when they are already logged in.
+    @State private var splashTimerDone   = false
+    @State private var sessionCheckDone  = false
+
+    private var showSplash: Bool { !splashTimerDone || !sessionCheckDone }
+
     var body: some View {
         ZStack {
             if showSplash {
                 GetStartedView()
                     .environmentObject(router)
                     .onAppear {
+                        // 1) Start the minimum splash timer
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            withAnimation {
-                                showSplash = false
-                            }
+                            withAnimation { splashTimerDone = true }
                         }
+                        // 2) Validate server session in parallel
+                        checkSession()
                     }
             } else if isLoggedIn {
                 FarmAppRootTabs()
@@ -274,9 +290,7 @@ struct ContentView: View {
                                     .environmentObject(router)
                             case .home, .mainTabs:
                                 Color.clear
-                                    .onAppear {
-                                        isLoggedIn = true
-                                    }
+                                    .onAppear { isLoggedIn = true }
                             case .equipments:
                                 EquipmentsHomeView()
                                     .environmentObject(router)
@@ -296,26 +310,33 @@ struct ContentView: View {
                 }
             }
         }
-        .animation(.default, value: isLoggedIn)
-        .onAppear {
-            checkSession()
-        }
+        .animation(.easeInOut(duration: 0.3), value: isLoggedIn)
+        .animation(.easeInOut(duration: 0.3), value: showSplash)
+        // ── Logout: call server, clear cookies + local data ──────────
         .onReceive(NotificationCenter.default.publisher(for: .logoutNotification)) { _ in
-            isLoggedIn = false
+            NetworkManager.shared.logout { _ in
+                // done (fire-and-forget; we clear locally regardless)
+            }
+            SessionManager.clearLocalSession()   // clears UserDefaults + cookies
+            withAnimation {
+                isLoggedIn = false
+            }
             router.popToRoot()
             tabRouter.selectedTab = .home
         }
         .onReceive(NotificationCenter.default.publisher(for: .loginNotification)) { _ in
-            withAnimation {
-                isLoggedIn = true
-            }
+            withAnimation { isLoggedIn = true }
         }
     }
 
+    // ── Session check ─────────────────────────────────────────────────
+    // Calls /api/auth/me. If the server session cookie is still valid
+    // the user is taken straight to Home; otherwise to Welcome.
     private func checkSession() {
         NetworkManager.shared.me { user in
-            if user != nil {
-                withAnimation { isLoggedIn = true }
+            withAnimation {
+                isLoggedIn = (user != nil)
+                sessionCheckDone = true   // unblock splash regardless of result
             }
         }
     }
